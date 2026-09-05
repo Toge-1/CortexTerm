@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# Eval generated scratch files
+evals/.cache/
+evals/cases/smoke.*
+evals/results/
+evals/venvs/
+evals/worktrees/
+evals/worktrees*/
+evals/repos/
+evals/logs/
+benchmarks/*_results.txt
+
+# CortexTerm machine-local state
+.cortexterm-memory-local/
+session-log.txt

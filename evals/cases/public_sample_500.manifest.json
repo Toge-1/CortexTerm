@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-06-24T06:00:48Z",
+  "seed": 20260618,
+  "counts": {
+    "swebench_verified": 100,
+    "bfcl_v3": 200,
+    "bfcl_multi_turn": 100,
+    "longmemeval": 80,
+    "agent_memory": 20
+  },
+  "total_cases": 500,
+  "sources": {
+    "swebench_verified": {
+      "dataset": "princeton-nlp/SWE-bench_Verified",
+      "split": "test",
+      "available": 500,
+      "sample_start": 152
+    },
+    "bfcl_v3": {
+      "dataset": "teddyyyy123/bfcl_v3",
+      "split": "train",
+      "available": 2485,
+      "sample_start": 699
+    },
+    "bfcl_multi_turn": {
+      "dataset": "fireworks-ai/bfcl_v3_multi_turn_base",
+      "split": "train",
+      "available": 200,
+      "sample_start": 0
+    },
+    "longmemeval": {
+      "dataset": "xiaowu0162/longmemeval-cleaned",
+      "split": "longmemeval_s_cleaned",
+      "available": 500
+    },
+    "agent_memory": {
+      "dataset": "kushalicious/agent-memory-benchmark",
+      "split": "test",
+      "available": 20
+    }
+  },
+  "schema_version": 1
+}
