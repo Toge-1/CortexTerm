@@ -1,141 +1,148 @@
 <div align="center">
 
-# CortexTerm / CortexTerm 中文版
+# CortexTerm
 
-### 🌏 Bilingual Terminal AI Coding Assistant / 双语终端 AI 编程助手
+### 具备上下文、记忆、工具编排和权限控制的终端 AI 编程助手
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
-[![Dependencies: 0](https://img.shields.io/badge/dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
+[![Runtime Dependencies: 0](https://img.shields.io/badge/runtime_dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
 [![Tests: 217 passed](https://img.shields.io/badge/tests-217%20passed-22c55e?style=for-the-badge)](tests/)
 
----
-
-**🇺🇸 [English](#english) | 🇨🇳 [中文](#中文)**
-
----
-
-*A zero-dependency terminal coding agent with context, memory, tools, and permission controls. / 一个具备上下文、记忆、工具编排和权限控制的零依赖终端编程智能体。*
+**🇨🇳 中文 | 🇺🇸 [English](README.en.md)**
 
 </div>
 
 ---
 
-# 🇨🇳 中文
-
 ## 🚀 快速开始
 
-### 安装
+要求 Python 3.11 或更高版本。
 
 ```bash
+# 1. 获取源码
 git clone https://github.com/Toge-1/CortexTerm.git
 cd CortexTerm
 
-# 交互式安装（推荐）
+# 2. 安装 CortexTerm 包
+python -m pip install .
+
+# 3. 配置模型和 API
 python -m cortexterm.main --install
+
+# 4. 启动
+python -m cortexterm.main
 ```
 
-### 各平台启动命令
+`python -m pip install .` 才是在安装项目；`--install` 运行的是 CortexTerm 自己的配置向导，负责保存模型/API 配置并创建启动器，不会安装 Python 包。
 
-| 平台 | 安装后命令 | 直接运行命令 |
-|------|-----------|-------------|
-| **Windows** | `cortexterm.bat` | `python -m cortexterm.main` |
-| **macOS** | `cortexterm` | `python3 -m cortexterm.main` |
-| **Linux** | `cortexterm` | `python3 -m cortexterm.main` |
+如果需要修改源码并立即看到效果，第二步改用开发模式：
 
-### 配置 PATH
+```bash
+python -m pip install -e .
+```
+
+### 启动命令
+
+| 平台 | 通用启动方式 | 配置向导创建的启动器 |
+|------|-------------|---------------------|
+| Windows | `python -m cortexterm.main` | `cortexterm.bat` |
+| macOS | `python3 -m cortexterm.main` | `cortexterm` |
+| Linux | `python3 -m cortexterm.main` | `cortexterm` |
+
+通过 pip 安装后也会生成 `cortexterm` 命令；如果系统提示找不到命令，直接使用表中的模块启动方式即可。
+
+### 配置启动器 PATH
 
 <details>
-<summary><strong>📋 Windows 配置 PATH</strong></summary>
+<summary><strong>Windows</strong></summary>
 
-1. 按 `Win+R` 输入 `sysdm.cpl`
-2. 高级 → 环境变量
-3. 在用户变量中找到 `Path`
-4. 添加：`%USERPROFILE%\.cortexterm\bin`
-5. 重启终端后使用：`cortexterm.bat`
+1. 按 `Win+R`，输入 `sysdm.cpl`。
+2. 打开“高级”→“环境变量”。
+3. 编辑用户变量中的 `Path`。
+4. 添加 `%USERPROFILE%\.cortexterm\bin`。
+5. 重启终端，执行 `cortexterm.bat`。
+
 </details>
 
 <details>
-<summary><strong>📋 macOS 配置 PATH (zsh)</strong></summary>
+<summary><strong>macOS（zsh）</strong></summary>
 
 ```bash
-# 快速添加（macOS 默认 zsh）
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-
-# 启动命令
 cortexterm
 ```
+
 </details>
 
 <details>
-<summary><strong>📋 Linux 配置 PATH (bash)</strong></summary>
+<summary><strong>Linux（bash）</strong></summary>
 
 ```bash
-# 快速添加
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
-
-# 启动命令
 cortexterm
 ```
+
 </details>
 
 ---
 
-## 🎯 核心特性
+## 🎯 核心功能
 
-- **🖥️ 丰富的终端 UI** — 备用屏幕 TUI，面板、ANSI 样式、平滑滚动
-- **🤖 智能代理循环** — 多轮工具使用，自动规划、执行、迭代
-- **🛠️ 30+ 内置工具** — 文件 I/O、代码搜索、Shell、Git、测试等
-- **🔒 权限系统** — 审批、拒绝、自动允许工具调用
-- **💾 会话持久化** — 保存并恢复对话，30 秒自动保存
-- **🧠 三级记忆** — 对话 → 会话 → 长期记忆
-- **🔌 MCP 集成** — 连接外部模型上下文协议服务器
-- **⌨️ 斜杠命令** — `/help`、`/tools`、`/cost`、`/config`、`/context`、`/memory`
+- **终端交互界面**：备用屏幕 TUI、面板渲染、滚动和工具卡片折叠。
+- **Agent 工具循环**：模型可以连续调用工具、读取结果并继续推理，直到给出最终回复。
+- **上下文管理**：控制发送给模型的消息历史，并在接近窗口上限时压缩旧内容。
+- **长期记忆**：按作用域保存偏好、约定、架构、命令、环境和决策等信息。
+- **会话持久化**：保存与恢复对话，并支持自动保存。
+- **权限控制**：工具执行前进行允许、拒绝或询问判断。
+- **MCP 集成**：通过配置接入外部 MCP Server，将其能力注册为可调用工具。
+- **29 个内置工具**：覆盖文件、命令、代码分析、测试、Git、Web 和开发辅助。
 
 ---
 
 ## 🛠️ 内置工具
 
-### 文件操作
-| 工具 | 说明 |
-|---|---|
-| `list_files` | 列出目录内容 |
-| `grep_files` | 跨文件正则搜索 |
-| `read_file` | 读取文件（支持行范围） |
-| `write_file` | 创建或覆盖文件 |
-| `edit_file` / `patch_file` | 文件编辑 |
+以下 29 个工具来自默认工具注册表；通过 MCP 接入的外部工具不计入其中。
 
-### 代码智能
-| 工具 | 说明 |
-|---|---|
-| `find_symbols` | AST 符号搜索 |
-| `find_references` | 查找符号引用 |
-| `code_review` | 代码质量分析 |
-
-### 执行与测试
-| 工具 | 说明 |
-|---|---|
-| `run_command` | 执行 Shell 命令 |
-| `test_runner` | 测试发现和执行 |
-
-### DevOps
-| 工具 | 说明 |
-|---|---|
-| `git` | Git 工作流 |
-| `docker_helper` | Docker 管理 |
-| `db_explorer` | SQLite 数据库探索 |
-
-*完整工具列表见 [英文版文档](#-built-in-tools)*
+| 类别 | 工具 | 功能 |
+|------|------|------|
+| 用户交互与记忆 | `ask_user` | 在执行过程中向用户提问 |
+| 用户交互与记忆 | `remember` | 写入长期记忆 |
+| 文件操作 | `list_files` | 列出目录内容 |
+| 文件操作 | `grep_files` | 跨文件正则搜索 |
+| 文件操作 | `read_file` | 按行读取文件 |
+| 文件操作 | `write_file` | 创建或覆盖文件 |
+| 文件操作 | `modify_file` | 修改文件内容 |
+| 文件操作 | `edit_file` | 执行结构化文本编辑 |
+| 文件操作 | `patch_file` | 应用补丁 |
+| 命令执行 | `run_command` | 执行 Shell 命令 |
+| 命令执行 | `run_with_debug` | 执行命令并辅助分析错误 |
+| Web 与 API | `web_fetch` | 获取网页内容 |
+| Web 与 API | `web_search` | 调用搜索接口 |
+| Web 与 API | `api_tester` | 测试 HTTP API |
+| 任务管理 | `todo_write` | 管理任务列表 |
+| Git | `git` | 执行 Git 工作流操作 |
+| Notebook | `notebook_edit` | 编辑 Jupyter Notebook |
+| 代码分析 | `find_symbols` | 基于 AST 查找符号 |
+| 代码分析 | `find_references` | 查找符号引用 |
+| 代码分析 | `get_ast_info` | 获取 AST 结构信息 |
+| 代码分析 | `multi_edit` | 批量执行多处编辑 |
+| 代码分析 | `code_review` | 分析代码质量问题 |
+| 可视化 | `file_tree` | 生成目录树 |
+| 可视化 | `diff_viewer` | 展示代码差异 |
+| 测试 | `test_runner` | 发现并运行测试 |
+| 开发辅助 | `db_explorer` | 查询 SQLite 数据库 |
+| 开发辅助 | `docker_helper` | 执行 Docker 与 Compose 操作 |
+| 治理 | `governance_audit` | 检查工具和配置治理问题 |
+| Skills | `load_skill` | 加载领域技能说明 |
 
 ---
 
 ## ⚙️ 配置
 
-### 设置文件
-
-`~/.cortexterm/settings.json`：
+用户级配置保存在 `~/.cortexterm/settings.json`：
 
 ```json
 {
@@ -147,34 +154,73 @@ cortexterm
 }
 ```
 
-### 项目命名
+常用环境变量：
 
-| 对外对象 | 新名称 |
-|---|---|
-| GitHub 仓库 | `CortexTerm` |
-| Python 发行包 | `cortexterm` |
-| Python 导入包 | `cortexterm` |
-| 终端命令 | `cortexterm` |
-| 用户配置目录 | `~/.cortexterm` |
+| 变量 | 作用 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_API_KEY` | Anthropic API Key | 无 |
+| `ANTHROPIC_AUTH_TOKEN` | 备用认证令牌 | 无 |
+| `ANTHROPIC_BASE_URL` | API 地址 | `https://api.anthropic.com` |
+| `ANTHROPIC_MODEL` | Anthropic 模型名 | 无 |
+| `CORTEXTERM_MODEL` | 覆盖配置文件中的模型 | 无 |
+| `CORTEXTERM_MAX_OUTPUT_TOKENS` | 最大输出 token 数 | 服务商默认值 |
+| `CORTEXTERM_MAX_RETRIES` | 可重试 API 错误的重试次数 | `4` |
+| `CORTEXTERM_REQUEST_TIMEOUT_SECONDS` | 单次请求超时秒数 | `60` |
+| `CORTEXTERM_MODEL_MODE` | 设为 `mock` 可无 API 运行 | 无 |
+| `CORTEXTERM_RUN_LIVE_API_TESTS` | 设为 `1` 才运行真实 API 测试 | 无 |
 
 ---
 
-## 🧪 开发
+## 📖 使用
+
+### 斜杠命令
+
+| 命令 | 功能 |
+|------|------|
+| `/help` | 显示帮助 |
+| `/tools` | 列出工具 |
+| `/cost` | 显示当前会话费用 |
+| `/config` | 显示配置诊断信息 |
+| `/context` | 显示上下文窗口使用情况 |
+| `/memory` | 显示记忆系统状态 |
+| `/exit` | 退出 CortexTerm |
+
+### 快捷键
+
+| 按键 | 功能 |
+|------|------|
+| `Enter` | 提交输入 |
+| `Up` / `Down` | 切换输入历史 |
+| `PageUp` / `PageDown` | 滚动对话记录 |
+| `Ctrl+C` | 取消当前操作 |
+| `Ctrl+U` | 清空输入行 |
+
+---
+
+## 🧪 开发与测试
 
 ```bash
-# 克隆仓库
 git clone https://github.com/Toge-1/CortexTerm.git
 cd CortexTerm
 
-# 运行测试
-pip install -e ".[dev]"
-pytest
+# 安装项目和测试依赖，源码修改立即生效
+python -m pip install -e ".[dev]"
 
-# Mock 模式（无需 API 密钥）
+# 运行本地测试
+python -m pytest
+
+# 无需 API 密钥启动
 CORTEXTERM_MODEL_MODE=mock python -m cortexterm.main
 
-# 可选：显式运行真实 API 测试（会产生外部请求）
-CORTEXTERM_RUN_LIVE_API_TESTS=1 pytest tests/test_integration.py -k LiveAPI
+# 可选：显式启用真实 API 测试（会发起外部请求）
+CORTEXTERM_RUN_LIVE_API_TESTS=1 python -m pytest tests/test_integration.py -k LiveAPI
+```
+
+PowerShell 设置临时环境变量时使用：
+
+```powershell
+$env:CORTEXTERM_MODEL_MODE = "mock"
+python -m cortexterm.main
 ```
 
 ---
@@ -182,252 +228,21 @@ CORTEXTERM_RUN_LIVE_API_TESTS=1 pytest tests/test_integration.py -k LiveAPI
 ## 📊 项目统计
 
 | 指标 | 值 |
-|---|---|
+|------|----|
 | Python 包文件数 | 89 |
-| 包代码行数 | ~17,000 |
-| 内置工具 | 30+ |
-| 外部依赖 | **0** |
-| 本地测试结果 | **217 通过，3 跳过** |
+| 包代码行数 | 约 17,000 |
+| 固定内置工具 | 29 |
+| 运行时第三方依赖 | 0 |
+| 本地测试结果 | 217 通过，3 跳过 |
 
 ---
 
-# 🇺🇸 ENGLISH
+## 📄 许可证
 
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-git clone https://github.com/Toge-1/CortexTerm.git
-cd CortexTerm
-
-# Interactive installer (recommended)
-python -m cortexterm.main --install
-```
-
-### Cross-Platform Launch Commands
-
-| Platform | After Install | Direct Run |
-|----------|--------------|------------|
-| **Windows** | `cortexterm.bat` | `python -m cortexterm.main` |
-| **macOS** | `cortexterm` | `python3 -m cortexterm.main` |
-| **Linux** | `cortexterm` | `python3 -m cortexterm.main` |
-
-### Configure PATH
-
-<details>
-<summary><strong>📋 Windows PATH Setup</strong></summary>
-
-1. Press `Win+R`, type `sysdm.cpl`
-2. Advanced → Environment Variables
-3. Find `Path` in User Variables
-4. Add: `%USERPROFILE%\.cortexterm\bin`
-5. Restart terminal, then use: `cortexterm.bat`
-</details>
-
-<details>
-<summary><strong>📋 macOS PATH Setup (zsh)</strong></summary>
-
-```bash
-# Quick setup (macOS default zsh)
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-
-# Launch command
-cortexterm
-```
-</details>
-
-<details>
-<summary><strong>📋 Linux PATH Setup (bash)</strong></summary>
-
-```bash
-# Quick setup
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-
-# Launch command
-cortexterm
-```
-</details>
-
----
-
-## 🎯 Core Features
-
-- **🖥️ Rich Terminal UI** — Alternate-screen TUI with panels, ANSI styling, smooth scrolling
-- **🤖 Intelligent Agent Loop** — Multi-turn tool use, auto-plan/execute/iterate
-- **🛠️ 30+ Built-in Tools** — File I/O, code search, shell, git, testing, and more
-- **🔒 Permission System** — Approve, deny, auto-allow tool calls
-- **💾 Session Persistence** — Save & resume conversations, 30s autosave
-- **🧠 3-Tier Memory** — Conversation → Session → Long-term memory
-- **🔌 MCP Integration** — Connect external Model Context Protocol servers
-- **⌨️ Slash Commands** — `/help`, `/tools`, `/cost`, `/config`, `/context`, `/memory`
-
----
-
-## 🛠️ Built-in Tools
-
-### File Operations
-| Tool | Description |
-|------|-------------|
-| `list_files` | List directory contents with glob |
-| `grep_files` | Regex search across files |
-| `read_file` | Read file with line ranges |
-| `write_file` | Create or overwrite files |
-| `edit_file` / `patch_file` | Structured editing and patching |
-
-### Code Intelligence
-| Tool | Description |
-|------|-------------|
-| `find_symbols` | AST-based symbol search (functions, classes) |
-| `find_references` | Find all references to a symbol |
-| `code_review` | Automated code quality analysis |
-
-### Execution & Testing
-| Tool | Description |
-|------|-------------|
-| `run_command` | Execute shell commands with timeout |
-| `test_runner` | Smart test discovery and execution |
-| `api_tester` | HTTP API endpoint testing |
-
-### Web & Search
-| Tool | Description |
-|------|-------------|
-| `web_fetch` | Fetch and extract web page content |
-| `web_search` | Web search via API |
-
-### DevOps
-| Tool | Description |
-|------|-------------|
-| `git` | Git workflow (status, diff, log, commit) |
-| `docker_helper` | Docker & Docker Compose management |
-| `db_explorer` | SQLite database exploration & queries |
-
-### Visualization & Misc
-| Tool | Description |
-|------|-------------|
-| `file_tree` | Visual directory tree |
-| `diff_viewer` | Rich diff visualization |
-| `notebook_edit` | Jupyter notebook editing |
-| `todo_write` | Task list management |
-| `ask_user` | Prompt user for clarification |
-| `load_skill` | Load domain-specific skills |
-
----
-
-## ⚙️ Configuration
-
-### Settings File
-
-`~/.cortexterm/settings.json`:
-
-```json
-{
-  "model": "claude-sonnet-4-20250514",
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
-    "ANTHROPIC_AUTH_TOKEN": "your-token-here"
-  }
-}
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Anthropic API key | — |
-| `ANTHROPIC_AUTH_TOKEN` | Auth token (alternative) | — |
-| `ANTHROPIC_BASE_URL` | API base URL | `https://api.anthropic.com` |
-| `ANTHROPIC_MODEL` | Model name | — |
-| `CORTEXTERM_MODEL` | Override the configured model | — |
-| `CORTEXTERM_MAX_OUTPUT_TOKENS` | Maximum model output tokens | provider default |
-| `CORTEXTERM_MAX_RETRIES` | Retry count for retryable API failures | `4` |
-| `CORTEXTERM_REQUEST_TIMEOUT_SECONDS` | Per-request timeout | `60` |
-| `CORTEXTERM_MODEL_MODE` | Set to `mock` for testing | — |
-| `CORTEXTERM_RUN_LIVE_API_TESTS` | Set to `1` to enable opt-in live API tests | — |
-
-### Project naming
-
-The repository, distribution package, import package, and CLI are named `CortexTerm`, `cortexterm`, `cortexterm`, and `cortexterm` respectively. User-level data is stored under `~/.cortexterm`.
-
----
-
-## 📖 Usage
-
-### Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/help` | Show available commands |
-| `/tools` | List all tools |
-| `/cost` | Show session cost |
-| `/config` | Show configuration diagnostics |
-| `/context` | Show context window usage |
-| `/memory` | Show memory system status |
-| `/exit` | Exit CortexTerm |
-
-### Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Submit input |
-| `Up/Down` | Input history |
-| `PageUp/PageDown` | Scroll transcript |
-| `Ctrl+C` | Cancel operation |
-| `Ctrl+U` | Clear input line |
-
----
-
-## 🧪 Development
-
-```bash
-# Clone
-git clone https://github.com/Toge-1/CortexTerm.git
-cd CortexTerm
-
-# Run tests
-pip install -e ".[dev]"
-pytest
-
-# Mock mode (no API key needed)
-CORTEXTERM_MODEL_MODE=mock python -m cortexterm.main
-
-# Optional: explicitly enable live API tests (makes external requests)
-CORTEXTERM_RUN_LIVE_API_TESTS=1 pytest tests/test_integration.py -k LiveAPI
-```
-
-### Project Stats
-
-| Metric | Value |
-|--------|-------|
-| Python package files | 89 |
-| Package lines of code | ~17,000 |
-| Built-in tools | 30+ |
-| External dependencies | **0** |
-| Local test result | **217 passed, 3 skipped** |
-
----
-
-## 🙏 Acknowledgments
-
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — Design inspiration
-- **All Contributors** — Everyone who contributed to CortexTerm
-
----
-
-## 📄 License
-
-MIT — see [LICENSE](LICENSE) for details.
-
----
+本项目使用 MIT 许可证，详见 [LICENSE](LICENSE)。
 
 <div align="center">
 
-**🇨🇳 由 [@QUSETIONS](https://github.com/QUSETIONS) 用 ❤️ 制作** | **🇺🇸 Made with ❤️ by [@QUSETIONS](https://github.com/QUSETIONS)**
-
-*轻量终端 AI 编程助手 / Lightweight Terminal AI Coding Assistant*
-
-[⬆ Back to Top](#cortexterm--cortexterm-中文版)
+**[English documentation](README.en.md)**
 
 </div>
