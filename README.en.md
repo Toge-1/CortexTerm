@@ -28,13 +28,13 @@ cd CortexTerm
 python -m pip install .
 
 # 3. Configure the model and API
-python -m cortexterm.main --install
+cortexterm --install
 
-# 4. Start CortexTerm
-python -m cortexterm.main
+# 4. Start CortexTerm from any directory
+cortexterm
 ```
 
-`python -m pip install .` installs the project. `--install` runs CortexTerm's configuration wizard, which saves model/API settings and creates a launcher; it does not install the Python package.
+`python -m pip install .` installs the project and registers the `cortexterm` command from `pyproject.toml`. `cortexterm --install` runs the configuration wizard, which saves model/API settings and creates a launcher.
 
 For source development, install in editable mode instead:
 
@@ -42,15 +42,12 @@ For source development, install in editable mode instead:
 python -m pip install -e .
 ```
 
-### Launch Commands
+After installation, the normal entry point is `cortexterm`. Use the module form only if the Python Scripts/bin directory is missing from `PATH` and the shell cannot find that command:
 
-| Platform | Universal command | Launcher created by the wizard |
-|----------|-------------------|--------------------------------|
-| Windows | `python -m cortexterm.main` | `cortexterm.bat` |
-| macOS | `python3 -m cortexterm.main` | `cortexterm` |
-| Linux | `python3 -m cortexterm.main` | `cortexterm` |
-
-The pip installation also creates a `cortexterm` command. If it is not on your `PATH`, use the module command shown above.
+```bash
+python -m cortexterm.main --install
+python -m cortexterm.main
+```
 
 ### Add the Launcher to PATH
 
@@ -210,7 +207,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 
 # Start without an API key
-CORTEXTERM_MODEL_MODE=mock python -m cortexterm.main
+CORTEXTERM_MODEL_MODE=mock cortexterm
 
 # Optional: explicitly enable live API tests (makes external requests)
 CORTEXTERM_RUN_LIVE_API_TESTS=1 python -m pytest tests/test_integration.py -k LiveAPI
@@ -220,7 +217,7 @@ In PowerShell, set a temporary environment variable like this:
 
 ```powershell
 $env:CORTEXTERM_MODEL_MODE = "mock"
-python -m cortexterm.main
+cortexterm
 ```
 
 ---

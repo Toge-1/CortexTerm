@@ -28,13 +28,13 @@ cd CortexTerm
 python -m pip install .
 
 # 3. 配置模型和 API
-python -m cortexterm.main --install
+cortexterm --install
 
-# 4. 启动
-python -m cortexterm.main
+# 4. 在任意目录启动
+cortexterm
 ```
 
-`python -m pip install .` 才是在安装项目；`--install` 运行的是 CortexTerm 自己的配置向导，负责保存模型/API 配置并创建启动器，不会安装 Python 包。
+`python -m pip install .` 会根据 `pyproject.toml` 安装项目并注册 `cortexterm` 命令。`cortexterm --install` 运行配置向导，负责保存模型/API 配置并创建启动器。
 
 如果需要修改源码并立即看到效果，第二步改用开发模式：
 
@@ -42,15 +42,12 @@ python -m cortexterm.main
 python -m pip install -e .
 ```
 
-### 启动命令
+安装完成后的正常入口就是 `cortexterm`。只有 Python 的 Scripts/bin 目录没有加入 `PATH`、系统提示找不到该命令时，才使用备用方式：
 
-| 平台 | 通用启动方式 | 配置向导创建的启动器 |
-|------|-------------|---------------------|
-| Windows | `python -m cortexterm.main` | `cortexterm.bat` |
-| macOS | `python3 -m cortexterm.main` | `cortexterm` |
-| Linux | `python3 -m cortexterm.main` | `cortexterm` |
-
-通过 pip 安装后也会生成 `cortexterm` 命令；如果系统提示找不到命令，直接使用表中的模块启动方式即可。
+```bash
+python -m cortexterm.main --install
+python -m cortexterm.main
+```
 
 ### 配置启动器 PATH
 
@@ -210,7 +207,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 
 # 无需 API 密钥启动
-CORTEXTERM_MODEL_MODE=mock python -m cortexterm.main
+CORTEXTERM_MODEL_MODE=mock cortexterm
 
 # 可选：显式启用真实 API 测试（会发起外部请求）
 CORTEXTERM_RUN_LIVE_API_TESTS=1 python -m pytest tests/test_integration.py -k LiveAPI
@@ -220,7 +217,7 @@ PowerShell 设置临时环境变量时使用：
 
 ```powershell
 $env:CORTEXTERM_MODEL_MODE = "mock"
-python -m cortexterm.main
+cortexterm
 ```
 
 ---
