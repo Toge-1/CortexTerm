@@ -50,3 +50,7 @@ benchmarks/*_results.txt
 # CortexTerm machine-local state
 .cortexterm-memory-local/
 session-log.txt
+
+# Local study and interview notes (do not publish)
+导学-*.md
+面经-*.md
