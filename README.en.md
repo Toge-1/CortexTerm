@@ -7,7 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![Runtime Dependencies: 0](https://img.shields.io/badge/runtime_dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
-[![Tests: 226 passed](https://img.shields.io/badge/tests-226%20passed-22c55e?style=for-the-badge)](tests/)
+[![Tests: 228 passed](https://img.shields.io/badge/tests-228%20passed-22c55e?style=for-the-badge)](tests/)
 
 **🇨🇳 [中文](README.md) | 🇺🇸 English**
 

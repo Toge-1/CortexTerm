@@ -264,7 +264,15 @@ def _is_valid_cut(messages: list[dict[str, Any]], index: int) -> bool:
     """Return whether keeping from index preserves every tool-call/result pair."""
     if index < 0 or index >= len(messages):
         return False
-    if messages[index].get("role") == "tool_result":
+    # Pi only cuts at user-like or assistant events. CortexTerm stores an
+    # assistant tool call as its own role, so it is an explicit candidate here.
+    # Tool results and any future metadata/event roles are never cut points.
+    if messages[index].get("role") not in {
+        "user",
+        "assistant",
+        "assistant_progress",
+        "assistant_tool_call",
+    }:
         return False
 
     removed_tool_ids = {

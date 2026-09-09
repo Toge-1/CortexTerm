@@ -80,6 +80,46 @@ def test_pi_cut_never_orphans_a_tool_result() -> None:
     assert kept_ids == {"call-2"}
 
 
+def test_pi_cut_uses_next_allowed_event_after_tool_result() -> None:
+    messages = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "old"},
+        {
+            "role": "assistant_tool_call",
+            "toolUseId": "call-1",
+            "toolName": "read_file",
+            "input": {"path": "large.txt"},
+        },
+        {
+            "role": "tool_result",
+            "toolUseId": "call-1",
+            "toolName": "read_file",
+            "content": "x" * 800,
+            "isError": False,
+        },
+        {"role": "assistant_progress", "content": "processing the result"},
+        {"role": "assistant", "content": "recent answer"},
+    ]
+
+    preparation = prepare_pi_compaction(messages, keep_recent_tokens=40)
+
+    assert preparation is not None
+    assert preparation.kept_messages[0]["role"] == "assistant_progress"
+
+
+def test_pi_cut_rejects_unknown_event_types() -> None:
+    messages = [
+        {"role": "user", "content": "old" * 100},
+        {"role": "future_metadata", "content": "x" * 400},
+        {"role": "assistant", "content": "recent"},
+    ]
+
+    preparation = prepare_pi_compaction(messages, keep_recent_tokens=20)
+
+    assert preparation is not None
+    assert preparation.kept_messages[0]["role"] == "assistant"
+
+
 def test_repeated_pi_compaction_updates_previous_summary() -> None:
     prompts: list[str] = []
 
