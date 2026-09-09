@@ -194,12 +194,33 @@ def load_runtime_config(cwd: str | Path | None = None) -> dict[str, Any]:
             "No auth configured. Set ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY."
         )
 
+    raw_compaction = effective.get("compaction", {})
+    compaction = dict(raw_compaction) if isinstance(raw_compaction, dict) else {}
+    strategy = str(compaction.get("strategy", "pi")).strip().lower()
+    if strategy not in {"pi", "legacy"}:
+        strategy = "pi"
+
+    def _positive_int(value: Any, default: int) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default
+        return parsed if parsed > 0 else default
+
+    compaction_config = {
+        "enabled": compaction.get("enabled", True) is not False,
+        "strategy": strategy,
+        "reserveTokens": _positive_int(compaction.get("reserveTokens"), 16_384),
+        "keepRecentTokens": _positive_int(compaction.get("keepRecentTokens"), 20_000),
+    }
+
     return {
         "model": model,
         "baseUrl": base_url,
         "authToken": auth_token,
         "apiKey": api_key,
         "maxOutputTokens": max_output_tokens,
+        "compaction": compaction_config,
         "mcpServers": effective.get("mcpServers", {}),
         "sourceSummary": (
             f"config: {CORTEXTERM_SETTINGS_PATH} > project .mcp.json > "

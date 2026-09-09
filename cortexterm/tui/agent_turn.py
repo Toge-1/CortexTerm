@@ -172,5 +172,15 @@ def _append_context_event(
         push_transcript_entry(state, kind="progress", body="; ".join(parts) + ".")
         return
 
+    if event == "compact_failed":
+        state.status = "Context compression failed."
+        error = str(payload.get("error") or "unknown error")
+        push_transcript_entry(
+            state,
+            kind="progress",
+            body=f"Context compaction failed; the original context was preserved. {error}",
+        )
+        return
+
     state.status = f"Context event: {event}"
     push_transcript_entry(state, kind="progress", body=f"Context event: {event}")

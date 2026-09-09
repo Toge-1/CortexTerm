@@ -19,6 +19,8 @@ class ChatMessage(TypedDict, total=False):
     input: Any
     isError: bool
     thinkingBlocks: list[dict[str, Any]]
+    isCompactionSummary: bool
+    compactedMessages: list[dict[str, Any]]
 
 
 class ToolCall(TypedDict):
@@ -47,4 +49,6 @@ class AgentStep:
 
 class ModelAdapter(Protocol):
     def next(self, messages: list[ChatMessage]) -> AgentStep: ...
+
+    def summarize(self, prompt: str, *, max_tokens: int) -> str: ...
 

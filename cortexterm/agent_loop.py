@@ -100,46 +100,72 @@ def run_agent_turn(
     recoverable_thinking_retry_count = 0
     tool_error_count = 0
     step = 0
+    compaction_failed_this_turn = False
 
-    # 检查上下文状态
-    if context_manager:
+    def _compact_if_needed() -> None:
+        nonlocal current_messages, compaction_failed_this_turn
+        if context_manager is None or compaction_failed_this_turn:
+            return
         context_manager.messages = current_messages
         stats = context_manager.get_stats()
-        logger.info("Context: %d tokens (%.0f%%), %d messages", 
-                   stats.total_tokens, stats.usage_percentage, stats.messages_count)
-        
-        # 如果需要压缩，自动执行
-        if context_manager.should_auto_compact():
-            logger.warning("Context near limit, auto-compacting...")
+        logger.info(
+            "Context: %d tokens (%.0f%%), %d messages",
+            stats.total_tokens,
+            stats.usage_percentage,
+            stats.messages_count,
+        )
+        if not context_manager.should_auto_compact():
+            return
+
+        logger.warning(
+            "Context near limit, auto-compacting with %s strategy...",
+            context_manager.strategy,
+        )
+        start_payload = {
+            "before_tokens": stats.total_tokens,
+            "context_window": stats.context_window,
+            "usage_percentage": stats.usage_percentage,
+            "messages_count": stats.messages_count,
+            "strategy": context_manager.strategy,
+        }
+        if on_context_event:
+            on_context_event("compact_start", start_payload)
+        try:
+            max_summary_tokens = max(1, int(context_manager.reserve_tokens * 0.8))
+            current_messages = context_manager.compact_messages(
+                lambda prompt: model.summarize(prompt, max_tokens=max_summary_tokens)
+            )
+        except Exception as error:  # keep the intact context for a later retry
+            compaction_failed_this_turn = True
+            logger.error("Context compaction failed: %s", error)
             if on_context_event:
                 on_context_event(
-                    "compact_start",
-                    {
-                        "before_tokens": stats.total_tokens,
-                        "context_window": stats.context_window,
-                        "usage_percentage": stats.usage_percentage,
-                        "messages_count": stats.messages_count,
-                    },
+                    "compact_failed",
+                    {**start_payload, "error": str(error)},
                 )
-            current_messages = context_manager.compact_messages()
-            after_stats = context_manager.get_stats()
-            payload: dict[str, Any] = {
-                "before_tokens": stats.total_tokens,
-                "after_tokens": after_stats.total_tokens,
-                "context_window": after_stats.context_window,
-                "usage_percentage": after_stats.usage_percentage,
-                "messages_before": stats.messages_count,
-                "messages_after": after_stats.messages_count,
-                "summary": context_manager.get_context_summary(),
-            }
-            if context_manager.compaction_history:
-                payload.update(context_manager.compaction_history[-1])
-            if on_context_event:
-                on_context_event("compact_done", payload)
-            elif on_progress_message:
-                on_progress_message(str(payload["summary"]))
+            return
+
+        after_stats = context_manager.get_stats()
+        payload: dict[str, Any] = {
+            "before_tokens": stats.total_tokens,
+            "after_tokens": after_stats.total_tokens,
+            "context_window": after_stats.context_window,
+            "usage_percentage": after_stats.usage_percentage,
+            "messages_before": stats.messages_count,
+            "messages_after": after_stats.messages_count,
+            "summary": context_manager.get_context_summary(),
+            "strategy": context_manager.strategy,
+        }
+        if context_manager.compaction_history:
+            payload.update(context_manager.compaction_history[-1])
+        if on_context_event:
+            on_context_event("compact_done", payload)
+        elif on_progress_message:
+            on_progress_message(str(payload["summary"]))
 
     while max_steps is None or step < max_steps:
+        # This also runs after tool results are appended, before the next model call.
+        _compact_if_needed()
         step += 1
         next_step: AgentStep
         try:

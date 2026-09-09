@@ -7,7 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![Runtime Dependencies: 0](https://img.shields.io/badge/runtime_dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
-[![Tests: 217 passed](https://img.shields.io/badge/tests-217%20passed-22c55e?style=for-the-badge)](tests/)
+[![Tests: 228 passed](https://img.shields.io/badge/tests-228%20passed-22c55e?style=for-the-badge)](tests/)
 
 **🇨🇳 [中文](README.md) | 🇺🇸 English**
 
@@ -90,7 +90,7 @@ cortexterm
 
 - **Terminal UI:** alternate-screen TUI, panel rendering, scrolling, and collapsible tool cards.
 - **Agent tool loop:** the model can call tools, consume their results, and continue until it produces a final response.
-- **Context management:** manages the messages sent to the model and compacts older content near the context limit.
+- **Context management:** uses Pi-style structured summaries by default, retains a recent token budget and valid tool-call relationships, and preserves archived messages for audit. The original deletion strategy remains configurable; see [context compaction](docs/context-compaction.md).
 - **Long-term memory:** stores preferences, conventions, architecture, commands, environment facts, and decisions by scope.
 - **Session persistence:** saves and restores conversations with autosave support.
 - **Permission controls:** allows, denies, or asks before tools execute.

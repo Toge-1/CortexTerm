@@ -19,6 +19,19 @@ def _latest_assistant_call(messages):
 
 
 class MockModelAdapter:
+    def summarize(self, prompt: str, *, max_tokens: int) -> str:
+        del prompt, max_tokens
+        return (
+            "## Goal\nContinue the current CortexTerm task.\n\n"
+            "## Constraints & Preferences\n- Preserve the user's requirements.\n\n"
+            "## Progress\n### Done\n- Earlier conversation compacted.\n\n"
+            "### In Progress\n- Continue from the retained recent messages.\n\n"
+            "### Blocked\n- (none)\n\n"
+            "## Key Decisions\n- (none)\n\n"
+            "## Next Steps\n1. Continue the task.\n\n"
+            "## Critical Context\n- Refer to the retained messages."
+        )
+
     def next(self, messages):
         tool_message = _last_tool_message(messages)
         if tool_message and tool_message["role"] == "tool_result":
