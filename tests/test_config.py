@@ -70,3 +70,33 @@ def test_cortexterm_settings_override_global_sources(tmp_path, monkeypatch) -> N
     assert effective["env"]["SHARED"] == "configured"
     assert effective["mcpServers"]["files"]["command"] == "project"
 
+
+def test_runtime_config_loads_pi_compaction_settings(tmp_path, monkeypatch) -> None:
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "model": "claude-sonnet-4-20250514",
+                "compaction": {
+                    "strategy": "legacy",
+                    "reserveTokens": 8000,
+                    "keepRecentTokens": 12000,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "CORTEXTERM_SETTINGS_PATH", settings)
+    monkeypatch.setattr(config, "CORTEXTERM_MCP_PATH", tmp_path / "mcp.json")
+    monkeypatch.setattr(config, "CLAUDE_SETTINGS_PATH", tmp_path / "claude.json")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    runtime = config.load_runtime_config(tmp_path)
+
+    assert runtime["compaction"] == {
+        "enabled": True,
+        "strategy": "legacy",
+        "reserveTokens": 8000,
+        "keepRecentTokens": 12000,
+    }
+

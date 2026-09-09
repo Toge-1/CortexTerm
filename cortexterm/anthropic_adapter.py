@@ -169,24 +169,7 @@ class AnthropicModelAdapter:
         self.runtime = runtime
         self.tools = tools
 
-    def next(self, messages: list[dict[str, Any]]) -> AgentStep:
-        system_message, converted_messages = _to_anthropic_messages(messages)
-        request_body = {
-            "model": self.runtime["model"],
-            "system": system_message,
-            "messages": converted_messages,
-            "tools": [
-                {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "input_schema": tool.input_schema,
-                }
-                for tool in self.tools.list()
-            ],
-        }
-        if self.runtime.get("maxOutputTokens") is not None:
-            request_body["max_tokens"] = self.runtime["maxOutputTokens"]
-
+    def _request(self, request_body: dict[str, Any]) -> dict[str, Any]:
         request = urllib.request.Request(
             url=self.runtime["baseUrl"].rstrip("/") + "/v1/messages",
             data=json.dumps(request_body).encode("utf-8"),
@@ -226,6 +209,55 @@ class AnthropicModelAdapter:
         status = getattr(response, "status", getattr(response, "code", 200))
         if status >= 400:
             raise RuntimeError(_extract_error_message(data, status))
+        return data if isinstance(data, dict) else {}
+
+    def summarize(self, prompt: str, *, max_tokens: int) -> str:
+        """Run a standalone summary request without exposing agent tools."""
+        configured_max = self.runtime.get("maxOutputTokens")
+        if isinstance(configured_max, int) and configured_max > 0:
+            max_tokens = min(max_tokens, configured_max)
+        data = self._request(
+            {
+                "model": self.runtime["model"],
+                "system": (
+                    "You create context checkpoint summaries for another coding agent. "
+                    "Follow the requested format, preserve concrete facts, and do not continue the task."
+                ),
+                "messages": [{"role": "user", "content": [_to_text_block(prompt)]}],
+                "max_tokens": max(1, max_tokens),
+            }
+        )
+        text_parts: list[str] = []
+        for block in data.get("content", []):
+            block_type = block.get("type")
+            if block_type == "tool_use":
+                raise RuntimeError("Compaction summary attempted to call a tool")
+            if block_type == "text" and isinstance(block.get("text"), str):
+                text_parts.append(block["text"])
+        summary = "\n".join(text_parts).strip()
+        if not summary:
+            raise RuntimeError("Compaction summary was empty")
+        return summary
+
+    def next(self, messages: list[dict[str, Any]]) -> AgentStep:
+        system_message, converted_messages = _to_anthropic_messages(messages)
+        request_body = {
+            "model": self.runtime["model"],
+            "system": system_message,
+            "messages": converted_messages,
+            "tools": [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.input_schema,
+                }
+                for tool in self.tools.list()
+            ],
+        }
+        if self.runtime.get("maxOutputTokens") is not None:
+            request_body["max_tokens"] = self.runtime["maxOutputTokens"]
+
+        data = self._request(request_body)
 
         tool_calls: list[dict[str, Any]] = []
         text_parts: list[str] = []

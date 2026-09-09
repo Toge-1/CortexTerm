@@ -71,3 +71,31 @@ def test_anthropic_adapter_parses_final_text(monkeypatch) -> None:
     assert step.content == "done"
     assert step.kind == "final"
 
+
+def test_anthropic_adapter_summary_request_has_no_tools(monkeypatch) -> None:
+    requests: list[dict] = []
+
+    def fake_urlopen(request, timeout=60):
+        del timeout
+        requests.append(json.loads(request.data.decode("utf-8")))
+        return DummyResponse(
+            {"stop_reason": "end_turn", "content": [{"type": "text", "text": "summary"}]}
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    adapter = AnthropicModelAdapter(
+        {
+            "model": "claude",
+            "baseUrl": "https://api.anthropic.com",
+            "authToken": "x",
+            "maxOutputTokens": 2048,
+        },
+        _tool_registry(),
+    )
+
+    result = adapter.summarize("summarize this", max_tokens=4096)
+
+    assert result == "summary"
+    assert "tools" not in requests[0]
+    assert requests[0]["max_tokens"] == 2048
+

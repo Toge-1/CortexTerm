@@ -8,6 +8,11 @@ class ScriptedModel(ModelAdapter):
     def __init__(self, steps: list[AgentStep]) -> None:
         self._steps = steps
         self.calls = 0
+        self.summary_prompts: list[str] = []
+
+    def summarize(self, prompt: str, *, max_tokens: int) -> str:
+        self.summary_prompts.append(prompt)
+        return "## Goal\nKeep working.\n\n## Critical Context\n- Earlier messages summarized."
 
     def next(self, messages: list[ChatMessage]) -> AgentStep:
         step = self._steps[self.calls]
@@ -95,7 +100,12 @@ def test_agent_turn_emits_callbacks() -> None:
 def test_agent_turn_emits_context_compaction_events() -> None:
     model = ScriptedModel([AgentStep(type="assistant", content="done")])
     registry = ToolRegistry([])
-    ctx = ContextManager(model="default", context_window=200)
+    ctx = ContextManager(
+        model="default",
+        context_window=200,
+        reserve_tokens=50,
+        keep_recent_tokens=60,
+    )
     events: list[tuple[str, dict]] = []
     assistant_events: list[str] = []
     messages = [{"role": "system", "content": "sys"}] + [
@@ -116,7 +126,104 @@ def test_agent_turn_emits_context_compaction_events() -> None:
     assert [event for event, _payload in events] == ["compact_start", "compact_done"]
     assert events[0][1]["before_tokens"] > 0
     assert events[1][1]["after_tokens"] > 0
+    assert events[1][1]["strategy"] == "pi"
+    assert model.summary_prompts
     assert assistant_events == ["done"]
+
+
+def test_agent_turn_compacts_after_tool_result_before_next_model_call() -> None:
+    seen_messages: list[list[ChatMessage]] = []
+
+    class RecordingModel(ScriptedModel):
+        def next(self, messages: list[ChatMessage]) -> AgentStep:
+            seen_messages.append(list(messages))
+            return super().next(messages)
+
+    model = RecordingModel(
+        [
+            AgentStep(
+                type="tool_calls",
+                calls=[{"id": "tool-1", "toolName": "echo", "input": {"text": "x" * 300}}],
+            ),
+            AgentStep(type="assistant", content="done"),
+        ]
+    )
+    registry = ToolRegistry(
+        [
+            ToolDefinition(
+                name="echo",
+                description="echo",
+                input_schema={"type": "object"},
+                validator=lambda value: value,
+                run=lambda _input, _context: ToolResult(ok=True, output="y" * 400),
+            )
+        ]
+    )
+    ctx = ContextManager(
+        model="default",
+        context_window=300,
+        reserve_tokens=80,
+        keep_recent_tokens=80,
+    )
+    messages: list[ChatMessage] = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "old" * 100},
+        {"role": "assistant", "content": "old answer" * 30},
+        {"role": "user", "content": "run echo"},
+    ]
+
+    run_agent_turn(
+        model=model,
+        tools=registry,
+        messages=messages,
+        cwd=".",
+        context_manager=ctx,
+    )
+
+    assert len(seen_messages) == 2
+    assert not any(message.get("isCompactionSummary") for message in seen_messages[0])
+    assert any(message.get("isCompactionSummary") for message in seen_messages[1])
+    assert any(message.get("role") == "tool_result" for message in seen_messages[1])
+
+
+def test_failed_compaction_preserves_original_context() -> None:
+    original: list[ChatMessage] = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "old " * 300},
+        {"role": "assistant", "content": "answer " * 200},
+        {"role": "user", "content": "latest"},
+    ]
+    seen: list[ChatMessage] = []
+    events: list[str] = []
+
+    class FailingSummaryModel(ScriptedModel):
+        def summarize(self, prompt: str, *, max_tokens: int) -> str:
+            del prompt, max_tokens
+            raise RuntimeError("summary unavailable")
+
+        def next(self, messages: list[ChatMessage]) -> AgentStep:
+            seen.extend(messages)
+            return super().next(messages)
+
+    model = FailingSummaryModel([AgentStep(type="assistant", content="done")])
+    ctx = ContextManager(
+        context_window=300,
+        reserve_tokens=80,
+        keep_recent_tokens=40,
+    )
+
+    result = run_agent_turn(
+        model=model,
+        tools=ToolRegistry([]),
+        messages=original,
+        cwd=".",
+        context_manager=ctx,
+        on_context_event=lambda event, _payload: events.append(event),
+    )
+
+    assert seen == original
+    assert events == ["compact_start", "compact_failed"]
+    assert result[: len(original)] == original
 
 
 def test_agent_turn_retries_empty_response_then_continues() -> None:

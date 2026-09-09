@@ -95,7 +95,7 @@ def test_context_manager_add_messages():
 def test_context_manager_should_compact():
     """Test auto-compaction trigger."""
     # Create manager with small window
-    manager = ContextManager(model="default", context_window=1000)
+    manager = ContextManager(model="default", context_window=1000, strategy="legacy")
     
     # Add messages to exceed 95%
     for i in range(50):
@@ -106,7 +106,7 @@ def test_context_manager_should_compact():
 
 def test_context_manager_compact():
     """Test message compaction."""
-    manager = ContextManager(model="default", context_window=1000)
+    manager = ContextManager(model="default", context_window=1000, strategy="legacy")
     
     # Add system prompt
     manager.add_message({"role": "system", "content": "You are helpful"})

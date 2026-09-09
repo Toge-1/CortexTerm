@@ -7,7 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![Runtime Dependencies: 0](https://img.shields.io/badge/runtime_dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
-[![Tests: 217 passed](https://img.shields.io/badge/tests-217%20passed-22c55e?style=for-the-badge)](tests/)
+[![Tests: 226 passed](https://img.shields.io/badge/tests-226%20passed-22c55e?style=for-the-badge)](tests/)
 
 **🇨🇳 中文 | 🇺🇸 [English](README.en.md)**
 
@@ -90,7 +90,7 @@ cortexterm
 
 - **终端交互界面**：备用屏幕 TUI、面板渲染、滚动和工具卡片折叠。
 - **Agent 工具循环**：模型可以连续调用工具、读取结果并继续推理，直到给出最终回复。
-- **上下文管理**：控制发送给模型的消息历史，并在接近窗口上限时压缩旧内容。
+- **上下文管理**：默认采用 Pi 式结构化摘要，保留最近 token、完整工具调用关系和可审计的旧消息；也可切回原删除式策略。详见 [压缩机制](docs/context-compaction.md)。
 - **长期记忆**：按作用域保存偏好、约定、架构、命令、环境和决策等信息。
 - **会话持久化**：保存与恢复对话，并支持自动保存。
 - **权限控制**：工具执行前进行允许、拒绝或询问判断。
@@ -144,6 +144,12 @@ cortexterm
 ```json
 {
   "model": "claude-sonnet-4-20250514",
+  "compaction": {
+    "enabled": true,
+    "strategy": "pi",
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+  },
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
     "ANTHROPIC_AUTH_TOKEN": "your-token-here"

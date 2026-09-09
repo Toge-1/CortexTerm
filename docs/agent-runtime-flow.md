@@ -964,10 +964,15 @@ progress 后不要停止
 cortexterm/context_manager.py
 ```
 
-如果 runtime 存在：
+如果 runtime 存在，会同时读取压缩配置：
 
 ```python
-context_mgr = ContextManager(model=runtime.get("model", "default"))
+context_mgr = ContextManager(
+    model=runtime.get("model", "default"),
+    strategy=runtime["compaction"]["strategy"],
+    reserve_tokens=runtime["compaction"]["reserveTokens"],
+    keep_recent_tokens=runtime["compaction"]["keepRecentTokens"],
+)
 ```
 
 ### 11.1 token 估算
@@ -991,33 +996,38 @@ default                   128,000
 CJK：约 1.5 字符/token
 ```
 
-### 11.2 agent turn 开始时检查上下文
+### 11.2 每次模型调用前检查上下文
 
-`run_agent_turn()` 一开始：
+`run_agent_turn()` 每次调用 `model.next()` 前都会执行：
 
 ```python
 context_manager.messages = current_messages
 stats = context_manager.get_stats()
 if context_manager.should_auto_compact():
-    current_messages = context_manager.compact_messages()
+    current_messages = context_manager.compact_messages(
+        lambda prompt: model.summarize(prompt, max_tokens=max_summary_tokens)
+    )
 ```
 
-压缩阈值：
+默认 `pi` 策略的触发条件：
 
 ```python
-AUTOCOMPACT_THRESHOLD = 0.95
+total_tokens > context_window - reserve_tokens
 ```
 
-压缩策略：
+默认参数是预留 16,384 token，并原样保留最近约 20,000 token。压缩流程：
 
 ```text
 1. 保留 system prompt
-2. 删除旧 assistant_progress
-3. 优先删除旧 tool_call/tool_result pair
-4. 再删除旧 user/assistant
-5. 保留最近 MIN_MESSAGES_TO_KEEP 条
-6. 插入 compaction marker
+2. 从最新消息向前按 token 寻找切分点
+3. 不在 tool_result 处切分，不拆散 tool_call/tool_result
+4. 用无工具的独立模型请求生成结构化摘要
+5. 组合成 system prompt + summary + 最近消息
+6. 连续压缩时把旧 summary 交给模型更新
+7. 被压缩的原消息保存在 compactedMessages，供会话回放和审计
 ```
+
+`strategy="legacy"` 仍保留原来的 95% 触发、删除旧消息到约 70% 的实现。
 
 ---
 
@@ -1307,10 +1317,12 @@ step = 0
 context_manager.messages = current_messages
 stats = context_manager.get_stats()
 if context_manager.should_auto_compact():
-    current_messages = context_manager.compact_messages()
-    if on_assistant_message:
-        on_assistant_message(context_manager.get_context_summary())
+    current_messages = context_manager.compact_messages(
+        lambda prompt: model.summarize(prompt, max_tokens=max_summary_tokens)
+    )
 ```
+
+这段检查位于主循环顶部，因此工具结果追加到 `current_messages` 后，下一次 `model.next()` 前也会重新检查。
 
 ### 15.3 主循环
 

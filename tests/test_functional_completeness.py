@@ -196,7 +196,11 @@ class TestContextManagement:
     def test_context_compaction(self):
         """Test context compaction reduces message count."""
         from cortexterm.context_manager import ContextManager
-        ctx = ContextManager(model="claude-sonnet-4-20250514", context_window=1000)
+        ctx = ContextManager(
+            model="claude-sonnet-4-20250514",
+            context_window=1000,
+            strategy="legacy",
+        )
         # Add many messages to trigger compaction
         ctx.messages = [{"role": "user", "content": "x" * 50} for _ in range(50)]
         if ctx.should_auto_compact():

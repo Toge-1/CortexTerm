@@ -231,7 +231,14 @@ def main() -> None:
     logger = get_logger("main")
     context_mgr = None
     if runtime:
-        context_mgr = ContextManager(model=runtime.get("model", "default"))
+        compaction = runtime.get("compaction", {})
+        context_mgr = ContextManager(
+            model=runtime.get("model", "default"),
+            strategy=compaction.get("strategy", "pi"),
+            enabled=compaction.get("enabled", True),
+            reserve_tokens=compaction.get("reserveTokens", 16_384),
+            keep_recent_tokens=compaction.get("keepRecentTokens", 20_000),
+        )
         logger.info("Context manager initialized for model: %s", runtime.get("model", "unknown"))
     
     # Initialize MemoryManager for cross-session knowledge retention
