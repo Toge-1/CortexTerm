@@ -8,6 +8,7 @@ import sys
 import time
 from typing import Any, Callable
 
+from cortexterm.state import set_idle
 from cortexterm.tui.input_parser import ParsedInputEvent, parse_input_chunk
 from cortexterm.tui.state import ScreenState, TtyAppArgs
 from cortexterm.tui.terminal import RawModeContext, win_read_one_key
@@ -37,7 +38,8 @@ def run_terminal_event_loop(
     with RawModeContext():
         while not should_exit:
             autosave_counter = _autosave_tick(state, autosave_counter)
-            _harvest_completed_agent_turn(args, state)
+            if _harvest_completed_agent_turn(args, state):
+                rerender()
 
             chunk, eof = _read_input_chunk(renderer)
             if eof:
@@ -70,16 +72,26 @@ def _autosave_tick(state: ScreenState, counter: int) -> int:
     return counter
 
 
-def _harvest_completed_agent_turn(args: TtyAppArgs, state: ScreenState) -> None:
+def _harvest_completed_agent_turn(args: TtyAppArgs, state: ScreenState) -> bool:
     agent_result_data = state.agent_result
     lock = getattr(state, "agent_lock", None)
-    if agent_result_data is None or lock is None or not agent_result_data.get("done"):
-        return
+    if agent_result_data is None or lock is None:
+        return False
 
     with lock:
-        if agent_result_data.get("messages"):
-            args.messages = agent_result_data["messages"]
+        if not agent_result_data.get("done"):
+            return False
+        next_messages = agent_result_data.get("messages")
         agent_result_data["done"] = False
+
+    if next_messages is not None:
+        args.messages = next_messages
+    state.is_busy = False
+    state.active_tool = None
+    state.status = None
+    if state.app_state:
+        state.app_state.set_state(set_idle())
+    return True
 
 
 def _read_input_chunk(renderer: Any) -> tuple[str, bool]:

@@ -20,6 +20,85 @@ from cortexterm.tui.transcript import format_transcript_text
 from cortexterm.tui.types import TranscriptEntry
 
 
+def test_busy_return_keeps_prompt_draft() -> None:
+    from cortexterm.tui.modes.normal import NormalModeActions, handle_normal_mode_event
+
+    submitted: list[str] = []
+    renders: list[str] = []
+    state = ScreenState(input="keep this draft", cursor_offset=7, is_busy=True)
+    actions = NormalModeActions(
+        submit_input=lambda _args, _state, _rerender, text: submitted.append(text) or False,
+        toggle_read_mode=lambda _args, _state: False,
+        scroll_by=lambda _args, _state, _amount: False,
+        page_step=lambda _args, _state: 1,
+        wheel_step=lambda _args, _state: 1,
+        jump_to_edge=lambda _args, _state, _edge: False,
+    )
+
+    handle_normal_mode_event(
+        object(),
+        state,
+        KeyEvent(name="return", ctrl=False, meta=False),
+        lambda: renders.append("render"),
+        actions,
+    )
+
+    assert submitted == ["keep this draft"]
+    assert state.input == "keep this draft"
+    assert state.cursor_offset == 7
+    assert renders == ["render"]
+
+
+def test_completed_turn_clears_busy_only_after_messages_are_harvested(tmp_path) -> None:
+    from cortexterm.tui.agent_turn import start_agent_turn
+    from cortexterm.tui.event_loop import _harvest_completed_agent_turn
+
+    class FakeTools:
+        def get_skills(self):
+            return []
+
+        def get_mcp_servers(self):
+            return []
+
+    class FakePermissions:
+        def get_summary(self):
+            return []
+
+        def begin_turn(self):
+            pass
+
+        def end_turn(self):
+            pass
+
+    args = TtyAppArgs(
+        runtime={},
+        tools=FakeTools(),
+        model=object(),
+        messages=[{"role": "system", "content": "old"}],
+        cwd=str(tmp_path),
+        permissions=FakePermissions(),
+    )
+    state = ScreenState()
+
+    start_agent_turn(
+        args,
+        state,
+        lambda: None,
+        "hello",
+        run_agent_turn_func=lambda **kwargs: kwargs["messages"]
+        + [{"role": "assistant", "content": "done"}],
+    )
+    state.agent_thread.join(timeout=2)
+
+    assert state.agent_result["done"] is True
+    assert state.is_busy is True
+    assert args.messages[-1] == {"role": "user", "content": "hello"}
+
+    assert _harvest_completed_agent_turn(args, state) is True
+    assert args.messages[-1] == {"role": "assistant", "content": "done"}
+    assert state.is_busy is False
+
+
 def test_summarize_tool_output_prefers_first_meaningful_line() -> None:
     output = "\n\nFILE: README.md\nOFFSET: 0\nEND: 100"
     assert summarize_tool_output("read_file", output).startswith("FILE: README.md")

@@ -105,9 +105,9 @@ def start_agent_turn(
             args.permissions.end_turn()
             with agent_thread_lock:
                 agent_result["done"] = True
-            state.is_busy = False
-            state.active_tool = None
-            state.status = None
+            # The main thread clears the busy state only after harvesting the
+            # completed messages. This prevents a new turn from starting with
+            # stale args.messages in the gap between completion and harvest.
             rerender()
 
     agent_thread = threading.Thread(target=run_agent_background, daemon=True)

@@ -320,6 +320,7 @@ def run_agent_turn(
                 }
             )
 
+        await_user_messages: list[str] = []
         for call in next_step.calls:
             if on_tool_start:
                 on_tool_start(call["toolName"], call["input"])
@@ -343,10 +344,18 @@ def run_agent_turn(
                 }
             )
             if result.awaitUser:
-                if on_assistant_message:
-                    on_assistant_message(result.output)
-                current_messages.append({"role": "assistant", "content": result.output})
-                return current_messages
+                await_user_messages.append(result.output)
+
+        # A model may emit ask_user alongside other calls in the same assistant
+        # response. Those calls were all chosen before any result was available,
+        # so finish the batch and preserve every tool-call/result pair before
+        # yielding control back to the user.
+        if await_user_messages:
+            user_prompt = "\n\n".join(await_user_messages)
+            if on_assistant_message:
+                on_assistant_message(user_prompt)
+            current_messages.append({"role": "assistant", "content": user_prompt})
+            return current_messages
 
     fallback = "Reached the maximum tool step limit for this turn."
     if on_assistant_message:

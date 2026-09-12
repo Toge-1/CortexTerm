@@ -111,6 +111,13 @@ def _handle_normal_mode_return(
             rerender()
             return
 
+    if state.is_busy:
+        # Keep the draft intact. submit_input owns the user-facing busy status,
+        # but must not receive control only after the prompt has been cleared.
+        actions.submit_input(args, state, rerender, state.input)
+        rerender()
+        return
+
     submitted = state.input
     state.input = ""
     state.cursor_offset = 0
@@ -277,4 +284,3 @@ def handle_normal_mode_wheel(
         rerender()
         return True
     return False
-

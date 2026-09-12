@@ -97,6 +97,59 @@ def test_agent_turn_emits_callbacks() -> None:
     assert ("assistant", "done") in events
 
 
+def test_await_user_finishes_sibling_tool_calls_before_returning() -> None:
+    executed: list[str] = []
+
+    def run_tool(input_data: dict, _context) -> ToolResult:
+        name = input_data["name"]
+        executed.append(name)
+        return ToolResult(
+            ok=True,
+            output="Which database?" if name == "ask" else f"done:{name}",
+            awaitUser=name == "ask",
+        )
+
+    registry = ToolRegistry(
+        [
+            ToolDefinition(
+                name="batch_tool",
+                description="batch tool",
+                input_schema={"type": "object"},
+                validator=lambda value: value,
+                run=run_tool,
+            )
+        ]
+    )
+    model = ScriptedModel(
+        [
+            AgentStep(
+                type="tool_calls",
+                calls=[
+                    {"id": "a", "toolName": "batch_tool", "input": {"name": "a"}},
+                    {"id": "ask", "toolName": "batch_tool", "input": {"name": "ask"}},
+                    {"id": "c", "toolName": "batch_tool", "input": {"name": "c"}},
+                ],
+            )
+        ]
+    )
+
+    messages = run_agent_turn(
+        model=model,
+        tools=registry,
+        messages=[{"role": "system", "content": "sys"}],
+        cwd=".",
+    )
+
+    assert executed == ["a", "ask", "c"]
+    assert model.calls == 1
+    assert [
+        message["toolUseId"]
+        for message in messages
+        if message["role"] == "tool_result"
+    ] == ["a", "ask", "c"]
+    assert messages[-1] == {"role": "assistant", "content": "Which database?"}
+
+
 def test_agent_turn_emits_context_compaction_events() -> None:
     model = ScriptedModel([AgentStep(type="assistant", content="done")])
     registry = ToolRegistry([])
