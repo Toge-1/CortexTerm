@@ -128,11 +128,36 @@ def _push_anthropic_message(messages: list[dict[str, Any]], role: str, block: di
         messages.append({"role": role, "content": [block]})
 
 
+def _to_compaction_summary_text(message: dict[str, Any]) -> str:
+    return (
+        "The conversation history before this point was compacted into the "
+        "following summary:\n\n<summary>\n"
+        f"{message['content']}\n"
+        "</summary>"
+    )
+
+
 def _to_anthropic_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
-    system = "\n\n".join(message["content"] for message in messages if message["role"] == "system")
+    system = "\n\n".join(
+        message["content"]
+        for message in messages
+        if message["role"] == "system" and not message.get("isCompactionSummary")
+    )
     converted: list[dict[str, Any]] = []
     for message in messages:
         role = message["role"]
+        # A compaction summary replaces prior conversational turns.  It must be
+        # represented as a user turn rather than a top-level system prompt so a
+        # retained mid-turn suffix may legally begin with an assistant message.
+        # Checking the marker before the role also keeps older saved sessions,
+        # where summaries were stored with role="system", compatible.
+        if message.get("isCompactionSummary"):
+            _push_anthropic_message(
+                converted,
+                "user",
+                _to_text_block(_to_compaction_summary_text(message)),
+            )
+            continue
         if role == "system":
             continue
         if role == "user":

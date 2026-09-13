@@ -72,6 +72,54 @@ def test_anthropic_adapter_parses_final_text(monkeypatch) -> None:
     assert step.kind == "final"
 
 
+def test_anthropic_adapter_sends_compaction_summary_as_first_user_turn(monkeypatch) -> None:
+    requests: list[dict] = []
+
+    def fake_urlopen(request, timeout=60):
+        del timeout
+        requests.append(json.loads(request.data.decode("utf-8")))
+        return DummyResponse(
+            {"stop_reason": "end_turn", "content": [{"type": "text", "text": "<final>done</final>"}]}
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    adapter = AnthropicModelAdapter(
+        {"model": "claude", "baseUrl": "https://api.anthropic.com", "authToken": "x"},
+        _tool_registry(),
+    )
+
+    adapter.next(
+        [
+            {"role": "system", "content": "base system prompt"},
+            {
+                "role": "system",
+                "content": "summary of the earlier conversation",
+                "isCompactionSummary": True,
+            },
+            {
+                "role": "assistant_tool_call",
+                "toolUseId": "tool-1",
+                "toolName": "read_file",
+                "input": {"path": "README.md"},
+            },
+            {
+                "role": "tool_result",
+                "toolUseId": "tool-1",
+                "toolName": "read_file",
+                "content": "file contents",
+                "isError": False,
+            },
+        ]
+    )
+
+    body = requests[0]
+    assert body["system"] == "base system prompt"
+    assert [message["role"] for message in body["messages"]] == ["user", "assistant", "user"]
+    assert "<summary>\nsummary of the earlier conversation\n</summary>" in body["messages"][0]["content"][0]["text"]
+    assert body["messages"][1]["content"][0]["type"] == "tool_use"
+    assert body["messages"][2]["content"][0]["type"] == "tool_result"
+
+
 def test_anthropic_adapter_summary_request_has_no_tools(monkeypatch) -> None:
     requests: list[dict] = []
 
