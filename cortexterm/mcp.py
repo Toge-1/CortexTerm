@@ -210,7 +210,7 @@ class StdioMcpClient:
             return ["content-length"]
         if configured == "newline-json":
             return ["newline-json"]
-        return ["content-length", "newline-json"]
+        return ["newline-json", "content-length"]
 
     def start(self) -> None:
         if self.process is not None:
