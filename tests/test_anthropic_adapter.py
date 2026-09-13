@@ -120,6 +120,43 @@ def test_anthropic_adapter_sends_compaction_summary_as_first_user_turn(monkeypat
     assert body["messages"][2]["content"][0]["type"] == "tool_result"
 
 
+def test_anthropic_adapter_merges_compaction_summary_with_kept_user_turn(monkeypatch) -> None:
+    requests: list[dict] = []
+
+    def fake_urlopen(request, timeout=60):
+        del timeout
+        requests.append(json.loads(request.data.decode("utf-8")))
+        return DummyResponse(
+            {"stop_reason": "end_turn", "content": [{"type": "text", "text": "<final>done</final>"}]}
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    adapter = AnthropicModelAdapter(
+        {"model": "claude", "baseUrl": "https://api.anthropic.com", "authToken": "x"},
+        _tool_registry(),
+    )
+
+    adapter.next(
+        [
+            {"role": "system", "content": "base system prompt"},
+            {
+                "role": "system",
+                "content": "summary of the earlier conversation",
+                "isCompactionSummary": True,
+            },
+            {"role": "user", "content": "kept user request"},
+        ]
+    )
+
+    body = requests[0]
+    assert [message["role"] for message in body["messages"]] == ["user"]
+    assert [block["text"] for block in body["messages"][0]["content"]] == [
+        "The conversation history before this point was compacted into the "
+        "following summary:\n\n<summary>\nsummary of the earlier conversation\n</summary>",
+        "kept user request",
+    ]
+
+
 def test_anthropic_adapter_summary_request_has_no_tools(monkeypatch) -> None:
     requests: list[dict] = []
 
