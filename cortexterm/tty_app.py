@@ -226,7 +226,11 @@ def run_tty_app(
     approval_result: dict[str, Any] = {}
 
     def _permission_prompt_handler(request: dict[str, Any]) -> dict[str, Any]:
-        nonlocal approval_result
+        # Reset the previous decision before publishing the new approval state.
+        # Once pending_approval is visible, the main thread may immediately
+        # handle buffered input and signal this event.
+        approval_result.clear()
+        approval_event.clear()
         state.pending_approval = PendingApproval(
             request=request,
             resolve=lambda r: None,
@@ -237,7 +241,6 @@ def run_tty_app(
         # the terminal display.  request() only sets a pending flag; the main
         # event loop's next flush() will do the actual render safely.
         rerender()
-        approval_event.clear()
         approval_event.wait()
         result = approval_result.copy()
         state.pending_approval = None
