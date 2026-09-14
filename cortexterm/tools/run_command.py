@@ -261,7 +261,12 @@ def _run(input_data: dict, context) -> ToolResult:
 
 run_command_tool = ToolDefinition(
     name="run_command",
-    description="Run a common development command from an allowlist.",
+    description=(
+        "Run a common development command from an allowlist. "
+        "For a long-running command such as a development server or file watcher, "
+        "put the complete command in `command`, leave `args` empty, and append a "
+        "single `&` to the end, for example `python server.py &`."
+    ),
     input_schema={"type": "object", "properties": {"command": {"type": "string"}, "args": {"type": "array"}, "cwd": {"type": "string"}}, "required": ["command"]},
     validator=_validate,
     run=_run,
