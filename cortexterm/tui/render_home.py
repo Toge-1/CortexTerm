@@ -174,7 +174,7 @@ def _render_home_input_card(args: TtyAppArgs | None, state: ScreenState) -> str:
     model = args.runtime.get("model", "model") if args and args.runtime else "model"
     model = model.replace("deepseek-", "deepseek ")
     meta = (
-        f"  {t.expandable}MiniClaudeCode{t.reset}{t.highlight_bg}"
+        f"  {t.expandable}CortexTerm{t.reset}{t.highlight_bg}"
         f" {t.subtle}·{t.reset}{t.highlight_bg} "
         f"{t.assistant}{model}{t.reset}{t.highlight_bg}"
         f" {t.subtle}·{t.reset}{t.highlight_bg} "
@@ -194,8 +194,8 @@ def _render_welcome_body(args: TtyAppArgs, state: ScreenState) -> str:
     t = theme()
     cols, _ = _get_terminal_size()
     logo_lines = [
-        f"{t.assistant}{t.bold}█▀▄▀█ █ █▄ █ █{t.reset}   {t.progress}{t.bold}█▀▀ █   ▄▀█ █ █ █▀▄ █▀▀{t.reset}   {t.expandable}{t.bold}█▀▀ █▀█ █▀▄ █▀▀{t.reset}",
-        f"{t.assistant}{t.bold}█ ▀ █ █ █ ▀█ █{t.reset}   {t.progress}{t.bold}█▄▄ █▄▄ █▀█ █▄█ █▄▀ ██▄{t.reset}   {t.expandable}{t.bold}█▄▄ █▄█ █▄▀ ██▄{t.reset}",
+        f"{t.assistant}{t.bold}█▀▀ █▀█ █▀█ ▀█▀ █▀▀ █ █{t.reset}   {t.progress}{t.bold}▀█▀ █▀▀ █▀█ █▀▄▀█{t.reset}",
+        f"{t.assistant}{t.bold}█▄▄ █▄█ █▀▄  █  █▄▄ ▀▄▀{t.reset}   {t.progress}{t.bold} █  █▄▄ █▀▄ █ ▀ █{t.reset}",
     ]
     return "\n".join(
         [
