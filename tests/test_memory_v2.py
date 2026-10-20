@@ -276,3 +276,47 @@ def test_start_resumes_existing_pending_turn(memory):
         time.sleep(.01)
     resumed.close()
     assert resumed.store.stats(resumed.project, resumed.workspace)["jobs"] == {"done": 1}
+
+
+def test_model_budget_leaves_unprocessed_history_pending(memory):
+    class AtLimit:
+        max_calls = 1
+        calls = [{}]
+        def extract(self, *args):
+            raise AssertionError("no more calls allowed")
+    memory.capture(TurnRecorder("work pending"))
+    memory.model = AtLimit()
+    assert not memory.process_one()
+    assert memory.store.stats(memory.project, memory.workspace)["jobs"] == {"pending": 1}
+
+
+def test_cited_event_id_reads_full_original_evidence(memory):
+    rec = TurnRecorder("source question")
+    rec.append({"role": "tool_result", "toolUseId": "T", "content": "Original output beyond a short quotation"})
+    memory.capture(rec)
+    fact = put(memory, "A derived observation", source_ids=[rec.events[1]["id"]])
+    metadata = memory.read(fact["id"])
+    assert metadata["source_turn_ids"] == [rec.id]
+    result = memory_read_tool.run({"id": rec.events[1]["id"], "offset": 0},
+                                  ToolContext(cwd=str(memory.root), memory_service=memory))
+    event = json.loads(json.loads(result.output)["text"])
+    assert event["content"] == rec.events[1]["content"]
+    assert event["turn_id"] == rec.id
+
+
+def test_exhausted_crash_retries_become_visible_failure(memory):
+    memory.capture(TurnRecorder("repeatedly interrupted"))
+    for _ in range(3):
+        assert memory.store.claim(memory.project, memory.workspace, lease_seconds=-1)
+    assert memory.store.claim(memory.project, memory.workspace) is None
+    assert memory.store.stats(memory.project, memory.workspace)["jobs"] == {"failed": 1}
+
+
+def test_memory_slash_command_reports_running_service(memory):
+    from types import SimpleNamespace
+    from cortexterm.cli_commands import try_handle_local_command
+    memory.capture(TurnRecorder("a pending turn"))
+    text = try_handle_local_command("/memory", memory_mgr=SimpleNamespace(v2=memory))
+    assert "Memory V2 / hybrid" in text
+    assert "'pending': 1" in text
+    assert "Automatic extraction: off" in text

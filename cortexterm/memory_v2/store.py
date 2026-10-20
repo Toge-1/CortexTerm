@@ -78,6 +78,11 @@ class MemoryStore:
     def claim(self, project: str, workspace: str, *, lease_seconds: int = 180) -> dict | None:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            db.execute(
+                "UPDATE turns SET state='failed',lease_until=0,error='Extraction lease expired after three attempts' "
+                "WHERE project=? AND workspace=? AND state='running' AND attempts>=3 AND lease_until<?",
+                (project, workspace, time.time()),
+            )
             row = db.execute(
                 "SELECT * FROM turns WHERE project=? AND workspace=? AND attempts<3 "
                 "AND (state='pending' OR (state='running' AND lease_until<?)) "

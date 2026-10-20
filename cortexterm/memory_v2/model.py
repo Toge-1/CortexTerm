@@ -29,6 +29,8 @@ class MemoryModel:
                 "max_tokens": max_tokens,
             })
             entry["usage"] = data.get("usage", {})
+            entry["stop_reason"] = data.get("stop_reason")
+            entry["block_types"] = [b.get("type") for b in data.get("content", [])]
             if data.get("stop_reason") == "max_tokens":
                 raise ValueError("Memory response exceeded output budget")
             blocks = data.get("content", [])
@@ -39,6 +41,9 @@ class MemoryModel:
                 raise ValueError("Empty memory model response")
             entry["ok"] = True
             return text
+        except Exception as exc:
+            entry["error_type"] = type(exc).__name__
+            raise
         finally:
             entry["seconds"] = round(time.monotonic() - start, 3)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import subprocess
 import threading
@@ -46,9 +47,9 @@ def project_identity(cwd: Path) -> str:
             ["git", "rev-parse", "--git-common-dir"], cwd=cwd,
             capture_output=True, text=True, timeout=2, check=True,
         )
-        return str((cwd / result.stdout.strip()).resolve()).casefold()
+        return os.path.normcase(str((cwd / result.stdout.strip()).resolve()))
     except (OSError, subprocess.SubprocessError):
-        return str(cwd.resolve()).casefold()
+        return os.path.normcase(str(cwd.resolve()))
 
 
 class TurnRecorder:
@@ -91,7 +92,7 @@ class MemoryService:
         if mode not in {"raw", "hybrid", "off"}:
             raise ValueError("Unsupported memory mode")
         self.root = Path(project_root).resolve()
-        self.workspace = str(self.root).casefold()
+        self.workspace = os.path.normcase(str(self.root))
         self.project = project_identity(self.root)
         self.store = MemoryStore(db_path)
         self.model = model
@@ -141,6 +142,9 @@ class MemoryService:
 
     def process_one(self) -> bool:
         if self.model is None:
+            return False
+        if hasattr(self.model, "max_calls") and len(self.model.calls) >= self.model.max_calls:
+            # A process-level spending limit is not a failed history item.
             return False
         turn = self.store.claim(self.project, self.workspace)
         if turn is None:
@@ -408,10 +412,20 @@ class MemoryService:
         records = self.store.records(self.project, self.workspace, active_only=False)
         record = next((r for r in records if r["id"] == identity), None)
         if record:
-            return record
+            return {**record, "source_turn_ids": list(dict.fromkeys(
+                i.rsplit(":", 1)[0] for i in record["source_ids"]
+            ))}
         turn_id = identity.split("#chunk:", 1)[0]
-        turn = next((t for t in self.store.turns(self.project, self.workspace) if t["id"] == turn_id), None)
-        return self._turn_record(turn) if turn else None
+        turns = self.store.turns(self.project, self.workspace)
+        turn = next((t for t in turns if t["id"] == turn_id), None)
+        if turn:
+            return self._turn_record(turn)
+        # Source IDs printed by memory_search/read can themselves be opened.
+        for turn in turns:
+            event = next((e for e in turn["events"] if e["id"] == identity), None)
+            if event:
+                return {**event, "turn_id": turn["id"], "session": turn["session"]}
+        return None
 
     def import_legacy(self, manager) -> int:
         before = len(self.store.records(self.project, self.workspace, active_only=False))

@@ -67,7 +67,8 @@ def execute_tool_shortcut(
         result = args.tools.execute(
             tool_name,
             tool_input,
-            context=ToolContext(cwd=args.cwd, permissions=args.permissions),
+            context=ToolContext(cwd=args.cwd, permissions=args.permissions,
+                                memory_service=getattr(args.memory_mgr, "v2", None)),
         )
         state.recent_tools.append(
             {
@@ -131,7 +132,7 @@ def handle_input(
         _append_scroll_debug(args, state)
         return False
 
-    local_result = try_handle_local_command(input_text, tools=args.tools)
+    local_result = try_handle_local_command(input_text, tools=args.tools, memory_mgr=args.memory_mgr)
     if local_result is not None:
         push_transcript_entry(state, kind="assistant", body=local_result)
         return False

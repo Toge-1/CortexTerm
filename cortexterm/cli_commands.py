@@ -124,7 +124,7 @@ def complete_slash_command(line: str) -> tuple[list[str], str]:
     return (hits if hits else [command.usage for command in SLASH_COMMANDS], line)
 
 
-def try_handle_local_command(user_input: str, tools=None) -> str | None:
+def try_handle_local_command(user_input: str, tools=None, memory_mgr=None) -> str | None:
     if user_input in {"/", "/help"}:
         return format_slash_commands()
 
@@ -157,9 +157,26 @@ def try_handle_local_command(user_input: str, tools=None) -> str | None:
     if user_input == "/memory":
         # Memory system display
         try:
+            service = getattr(memory_mgr, "v2", None)
+            if service:
+                stats = service.store.stats(service.project, service.workspace)
+                calls = getattr(service.model, "calls", [])
+                return "\n".join([
+                    f"Memory V2 / {service.mode}",
+                    f"Active records: {stats['active']} / {stats['records']}",
+                    f"Extraction queue: {stats['jobs']}",
+                    f"Automatic extraction: {'on' if service.model else 'off'}",
+                    f"Extraction calls this process: {len(calls)}",
+                    f"Graph expansion: {'on' if service.graph else 'off'}",
+                    f"Context budget: {service.max_tokens} estimated tokens",
+                    f"Database: {service.store.path}",
+                    "Use memory_search / memory_read to inspect scoped evidence.",
+                ])
+            if getattr(memory_mgr, "memory_mode", "") == "off":
+                return "Memory injection and V2 capture are disabled for this launch."
             from cortexterm.memory import MemoryManager
             from pathlib import Path
-            memory_mgr = MemoryManager(project_root=Path(cwd))
+            memory_mgr = memory_mgr or MemoryManager(project_root=Path(cwd))
             
             lines = ["Memory System Status", "=" * 40, ""]
             

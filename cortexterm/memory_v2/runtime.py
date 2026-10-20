@@ -12,6 +12,7 @@ from .service import MemoryService
 def create_memory_manager(cwd: str, runtime: dict | None) -> MemoryManager:
     manager = MemoryManager(project_root=Path(cwd))
     settings = (runtime or {}).get("memory", {})
+    manager.memory_mode = settings.get("mode", "legacy")
     if settings.get("mode", "legacy") == "legacy":
         return manager
     if settings.get("mode") == "off":

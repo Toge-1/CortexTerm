@@ -83,7 +83,7 @@ cortexterm --memory off
 
 ## 查看与诊断
 
-在项目目录执行：
+TUI 内输入 `/memory` 查看当前策略、队列和提取状态。在项目目录执行：
 
 ```powershell
 python -m cortexterm.memory_v2 status

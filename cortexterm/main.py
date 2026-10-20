@@ -23,10 +23,10 @@ from cortexterm.tty_app import run_tty_app
 from cortexterm.workspace import resolve_tool_path
 
 
-def _handle_local_command(user_input: str, tools) -> str | None:
+def _handle_local_command(user_input: str, tools, memory_mgr=None) -> str | None:
     if user_input == "/tools":
         return "\n".join(f"{tool.name}: {tool.description}" for tool in tools.list())
-    local_result = try_handle_local_command(user_input, tools=tools)
+    local_result = try_handle_local_command(user_input, tools=tools, memory_mgr=memory_mgr)
     return local_result
 
 
@@ -312,7 +312,7 @@ def main() -> None:
                     saved_path = _save_transcript_file(cwd, permissions, transcript, output_path)
                     print(f"Saved transcript to {saved_path}")
                     continue
-                local_result = _handle_local_command(user_input, tools)
+                local_result = _handle_local_command(user_input, tools, memory_mgr)
                 if local_result is not None:
                     _append_transcript(transcript, kind="user", body=user_input)
                     _append_transcript(transcript, kind="assistant", body=local_result)
