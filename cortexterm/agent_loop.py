@@ -82,7 +82,26 @@ def _should_treat_assistant_as_progress(*, kind: str | None, content: str, saw_t
     return False
 
 
-def run_agent_turn(
+def run_agent_turn(*, memory_service=None, memory_session: str = "", **kwargs) -> list[ChatMessage]:
+    """Run a turn; the optional recorder survives compaction and exception paths."""
+    if memory_service is None:
+        return _run_agent_turn_impl(**kwargs)
+    from cortexterm.memory_v2.service import TurnRecorder
+    request = next((m.get("content", "") for m in reversed(kwargs["messages"])
+                    if m.get("role") == "user" and not m.get("isCompactionSummary")), "")
+    recorder = TurnRecorder(str(request), memory_session)
+    try:
+        return _run_agent_turn_impl(
+            **kwargs, memory_service=memory_service, memory_recorder=recorder,
+        )
+    finally:
+        try:
+            memory_service.capture(recorder)
+        except Exception as error:
+            logger.warning("Unable to persist memory evidence (%s)", type(error).__name__)
+
+
+def _run_agent_turn_impl(
     *,
     model: ModelAdapter,
     tools: ToolRegistry,
@@ -96,8 +115,11 @@ def run_agent_turn(
     on_progress_message: Callable[[str], None] | None = None,
     on_context_event: Callable[[str, dict[str, Any]], None] | None = None,
     context_manager: ContextManager | None = None,
+    memory_service=None,
+    memory_recorder=None,
 ) -> list[ChatMessage]:
-    current_messages = list(messages)
+    from cortexterm.memory_v2.service import RecordedMessages
+    current_messages = RecordedMessages(messages, memory_recorder) if memory_recorder else list(messages)
     saw_tool_result = False
     empty_response_retry_count = 0
     recoverable_thinking_retry_count = 0
@@ -150,7 +172,7 @@ def run_agent_turn(
                         f"Context remains above the input budget "
                         f"({after_stats.total_tokens:,} > {budget:,} estimated tokens)."
                     )
-                current_messages = candidate
+                current_messages = RecordedMessages(candidate, memory_recorder) if memory_recorder else candidate
                 break
             except Exception as error:
                 # Pi commits only validated checkpoints. Restore the original
@@ -367,6 +389,7 @@ def run_agent_turn(
                     cwd=cwd,
                     permissions=permissions,
                     archived_messages=get_archived_messages(current_messages),
+                    memory_service=memory_service,
                 ),
             )
             if on_tool_result:

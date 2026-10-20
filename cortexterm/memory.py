@@ -347,12 +347,15 @@ class MemoryManager:
         self,
         max_entries: int = 20,
         max_tokens: int = 8000,
+        query: str = "",
     ) -> str:
         """Get relevant memory context for system prompt injection.
         
         Returns formatted MEMORY.md content from all scopes,
         respecting token limits.
         """
+        if getattr(self, "v2", None) is not None:
+            return self.v2.context(query, max_tokens=min(max_tokens, self.v2.max_tokens))
         from cortexterm.context_manager import estimate_tokens
         
         parts = []

@@ -80,12 +80,18 @@ def _validate(input_data: dict) -> dict:
         content = content[:MAX_CONTENT_CHARS].rstrip()
 
     tags = _normalize_tags(input_data.get("tags", []))
+    supersedes = input_data.get("supersedes", [])
+    if not isinstance(supersedes, list) or len(supersedes) > 10 or any(
+        not isinstance(item, str) for item in supersedes
+    ):
+        raise ValueError("supersedes must be a list of at most ten memory IDs")
 
     return {
         "scope": scope,
         "category": category,
         "content": content,
         "tags": tags,
+        "supersedes": supersedes,
     }
 
 
@@ -121,6 +127,18 @@ def _run(input_data: dict, context) -> ToolResult:
         return ToolResult(ok=False, output="Memory rejected: sensitive content detected.")
 
     scope = MemoryScope(input_data["scope"])
+    if context.memory_service is not None:
+        service = context.memory_service
+        if context.permissions:
+            context.permissions.ensure_edit(
+                str(service.store.path),
+                f"Remember ({scope.value}): {content}\nSupersedes: {input_data.get('supersedes', [])}",
+            )
+        identity = service.remember(content, scope.value, input_data["category"], input_data["tags"],
+                                    input_data.get("supersedes"))
+        return ToolResult(ok=True, output=f"Memory saved: {identity} ({scope.value}/{input_data['category']})")
+    if input_data.get("supersedes"):
+        return ToolResult(ok=False, output="Replacing a memory by ID requires Memory V2.")
     manager = MemoryManager(project_root=context.cwd)
     duplicate = _find_duplicate(manager, scope, content)
     if duplicate is not None:
@@ -174,6 +192,10 @@ remember_tool = ToolDefinition(
             },
             "content": {"type": "string"},
             "tags": {"type": "array", "items": {"type": "string"}},
+            "supersedes": {
+                "type": "array", "items": {"type": "string"},
+                "description": "Memory V2 only: active memory IDs explicitly corrected by this fact. Keep the same scope.",
+            },
         },
         "required": ["scope", "category", "content"],
     },

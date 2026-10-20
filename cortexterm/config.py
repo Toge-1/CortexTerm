@@ -221,6 +221,7 @@ def load_runtime_config(cwd: str | Path | None = None) -> dict[str, Any]:
         "apiKey": api_key,
         "maxOutputTokens": max_output_tokens,
         "compaction": compaction_config,
+        "memory": effective.get("memory", {}) if isinstance(effective.get("memory", {}), dict) else {},
         "mcpServers": effective.get("mcpServers", {}),
         "sourceSummary": (
             f"config: {CORTEXTERM_SETTINGS_PATH} > project .mcp.json > "

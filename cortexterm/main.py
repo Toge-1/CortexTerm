@@ -169,6 +169,14 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Set logging level (default: WARNING)",
     )
+    parser.add_argument(
+        "--memory", choices=["legacy", "off", "raw", "hybrid"], default=None,
+        help="Memory strategy for this launch (raw searches saved evidence; hybrid also searches extracted facts)",
+    )
+    parser.add_argument(
+        "--memory-extract", action="store_true",
+        help="Enable bounded background model calls to extract memories; use with --memory hybrid",
+    )
     args = parser.parse_args()
 
     # Initialize logging
@@ -242,8 +250,17 @@ def main() -> None:
         logger.info("Context manager initialized for model: %s", runtime.get("model", "unknown"))
     
     # Initialize MemoryManager for cross-session knowledge retention
-    from cortexterm.memory import MemoryManager
-    memory_mgr = MemoryManager(project_root=Path(cwd))
+    from cortexterm.memory_v2.runtime import create_memory_manager
+    memory_runtime = dict(runtime or {})
+    if args.memory is not None or args.memory_extract:
+        memory_settings = dict(memory_runtime.get("memory", {}))
+        if args.memory is not None:
+            memory_settings["mode"] = args.memory
+        if args.memory_extract:
+            memory_settings.setdefault("mode", "hybrid")
+            memory_settings["autoExtract"] = True
+        memory_runtime["memory"] = memory_settings
+    memory_mgr = create_memory_manager(cwd, memory_runtime)
     logger.info("Memory manager initialized")
     
     messages = [
@@ -307,7 +324,8 @@ def main() -> None:
                     result = tools.execute(
                         shortcut["toolName"],
                         shortcut["input"],
-                        context=ToolContext(cwd=cwd, permissions=permissions),
+                        context=ToolContext(cwd=cwd, permissions=permissions,
+                                            memory_service=getattr(memory_mgr, "v2", None)),
                     )
                     _append_transcript(
                         transcript,
@@ -330,7 +348,7 @@ def main() -> None:
                         {
                             "skills": tools.get_skills(),
                             "mcpServers": tools.get_mcp_servers(),
-                            "memory_context": memory_mgr.get_relevant_context(),
+                            "memory_context": memory_mgr.get_relevant_context(query=user_input),
                         },
                     ),
                 }
@@ -372,6 +390,7 @@ def main() -> None:
                     permissions=permissions,
                     context_manager=context_mgr,
                     on_context_event=on_context_event,
+                    memory_service=getattr(memory_mgr, "v2", None),
                 )
                 permissions.end_turn()
                 
@@ -400,6 +419,8 @@ def main() -> None:
     except KeyboardInterrupt:
         print("\n\nInterrupted by user. Shutting down gracefully...")
     finally:
+        if getattr(memory_mgr, "v2", None):
+            memory_mgr.v2.close()
         # Graceful shutdown: clean up all resources
         from cortexterm.logging_config import get_logger
         logger = get_logger("main")

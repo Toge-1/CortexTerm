@@ -107,6 +107,7 @@ class ToolContext:
     permissions: Any | None = None
     # Current conversation only. History tools read this without mutating it.
     archived_messages: list[dict[str, Any]] | None = None
+    memory_service: Any | None = None
 
 
 Validator = Callable[[Any], Any]

@@ -36,7 +36,6 @@ def start_agent_turn(
     aggregated_edit_by_key: dict[str, AggregatedEditProgress] = {}
     aggregated_edit_by_entry_id: dict[int, AggregatedEditProgress] = {}
 
-    _refresh_system_prompt(args)
     args.messages.append({"role": "user", "content": input_text})
 
     def on_assistant_message(content: str) -> None:
@@ -82,7 +81,15 @@ def start_agent_turn(
 
     def run_agent_background() -> None:
         try:
+            # Retrieval can do disk/network work; keep it off the TUI thread.
+            _refresh_system_prompt(args, input_text)
             turn_runner = run_agent_turn_func or run_agent_turn
+            memory_options = {}
+            if getattr(args.memory_mgr, "v2", None) is not None:
+                memory_options = {
+                    "memory_service": args.memory_mgr.v2,
+                    "memory_session": state.session.session_id if state.session else "",
+                }
             next_messages = turn_runner(
                 model=args.model,
                 tools=args.tools,
@@ -95,6 +102,7 @@ def start_agent_turn(
                 on_assistant_message=on_assistant_message,
                 on_progress_message=on_progress_message,
                 on_context_event=on_context_event,
+                **memory_options,
             )
             with agent_thread_lock:
                 agent_result["messages"] = next_messages
@@ -118,7 +126,7 @@ def start_agent_turn(
     state.agent_result = agent_result
 
 
-def _refresh_system_prompt(args: TtyAppArgs) -> None:
+def _refresh_system_prompt(args: TtyAppArgs, query: str = "") -> None:
     args.messages[0] = {
         "role": "system",
         "content": build_system_prompt(
@@ -128,7 +136,9 @@ def _refresh_system_prompt(args: TtyAppArgs) -> None:
                 "skills": args.tools.get_skills(),
                 "mcpServers": args.tools.get_mcp_servers(),
                 "memory_context": (
-                    args.memory_mgr.get_relevant_context() if args.memory_mgr else ""
+                    (args.memory_mgr.get_relevant_context(query=query)
+                     if getattr(args.memory_mgr, "v2", None) is not None
+                     else args.memory_mgr.get_relevant_context()) if args.memory_mgr else ""
                 ),
             },
         ),
