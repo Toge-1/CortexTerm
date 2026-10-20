@@ -199,6 +199,13 @@ class MemoryStore:
             )
             return list(dict.fromkeys(x for r in rows for x in r if x not in ids))
 
+    def links_for(self, identity: str) -> list[dict]:
+        with self.connect() as db:
+            return [dict(row) for row in db.execute(
+                "SELECT source,target,kind FROM links WHERE source=? OR target=? LIMIT 100",
+                (identity, identity),
+            )]
+
     def mark_used(self, ids: list[str]) -> None:
         with self.connect() as db:
             db.executemany("UPDATE memories SET uses=uses+1 WHERE id=?", [(i,) for i in ids])

@@ -1,0 +1,183 @@
+[
+  {
+    "id": "64c61d6662ce3808c64f2270",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In an unrelated presentation project, slide-label deduplication uses `normalize_labels`, which converts every label to uppercase and sorts alphabetically; this convention is scoped to slide labels only and must not be applied to arbitrary APIs.",
+    "keywords": [
+      "normalize_labels",
+      "uppercase",
+      "deduplication",
+      "slide labels",
+      "alphabetical sorting",
+      "scope limitation",
+      "label normalization"
+    ],
+    "entities": [
+      "unrelated presentation project",
+      "normalize_labels"
+    ],
+    "source_ids": [
+      "new_unrelated_task-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "new_unrelated_task-history-0:1",
+        "role": "user",
+        "quote": "An unrelated presentation project uses uppercase deduplication for slide labels. Its normalize_labels converts every label to upper case and sorts alphabetically. That convention only applies to slide labels, not arbitrary APIs."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "4ad87fbbc6d40f647c34c6b9",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "In the build dashboard, midnight blue and pale green are presentation-only colors and should not be interpreted as semantic status indicators.",
+    "keywords": [
+      "midnight blue",
+      "pale green",
+      "build dashboard",
+      "presentation-only",
+      "colors"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "new_unrelated_task-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "new_unrelated_task-history-1:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "5271e9d89315abecccc308d8",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests; no additional interface details are recorded in this event.",
+    "keywords": [
+      "archive utility",
+      "document IDs",
+      "stable UUIDs",
+      "zip manifests"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "new_unrelated_task-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "new_unrelated_task-history-2:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "86211a864f18faac2c499968",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "In the image thumbnail job, generated thumbnails must preserve the original aspect ratio, and the original photograph files must remain untouched. This applies only to the image thumbnail job.",
+    "keywords": [
+      "image thumbnail job",
+      "aspect ratio",
+      "preserve aspect ratio",
+      "original photographs",
+      "untouched",
+      "thumbnail"
+    ],
+    "entities": [
+      "image thumbnail job"
+    ],
+    "source_ids": [
+      "new_unrelated_task-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "new_unrelated_task-history-3:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "4d7e0cb7949fd54f1f24ddc8",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-f0kq46ty\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In billing reports, monetary amounts are grouped by currency, and amounts in different currencies must never be added together directly. This rule applies to billing report aggregation only and does not describe generic currency conversion or other subsystems.",
+    "keywords": [
+      "billing reports",
+      "currency",
+      "group by currency",
+      "monetary amounts",
+      "multi-currency",
+      "aggregation",
+      "do not add different currencies",
+      "different currencies"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "new_unrelated_task-history-5:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "new_unrelated_task-history-5:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780018000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

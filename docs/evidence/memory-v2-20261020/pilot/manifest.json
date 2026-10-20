@@ -1,0 +1,31 @@
+{
+  "kind": "constructed_coding_transfer_pilot",
+  "model": "deepseek-v4-pro",
+  "dataset_sha256": "c4f0ccd1db14bd865345421bc5fc29559960d9825556861f13bb4b92c9933023",
+  "cases": [
+    "leased_workspace",
+    "clock_units",
+    "approval_wakeup",
+    "paired_boundary",
+    "stale_retry_policy",
+    "new_unrelated_task"
+  ],
+  "repeats": 2,
+  "modes": [
+    "none",
+    "full",
+    "raw",
+    "hybrid",
+    "graph"
+  ],
+  "max_steps": 5,
+  "memory_budget_estimated_tokens": 2400,
+  "judgment": "hidden executable assertions; no LLM judge",
+  "limitations": [
+    "Constructed tasks, not SWE-bench",
+    "Small sample",
+    "No temperature/seed guarantee from provider",
+    "Memory-dependent tasks include conventions absent from the current stub"
+  ],
+  "source_commit": "d0824cc91b698afde5e26e562af92b62fd48e7d4"
+}

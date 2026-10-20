@@ -82,13 +82,16 @@ class RecordedMessages(list):
 
     def append(self, value):
         super().append(value)
-        self.recorder.append(value)
+        # The real user's request was captured at turn entry. User-role messages
+        # added inside the loop are program-generated retry/continue instructions.
+        if value.get("role") != "user":
+            self.recorder.append(value)
 
 
 class MemoryService:
     def __init__(self, project_root: Path, db_path: Path, *, model=None,
                  mode: str = "hybrid", graph: bool = False, max_tokens: int = 2400,
-                 embedder=None):
+                 embedder=None, auto_recall: bool = False):
         if mode not in {"raw", "hybrid", "off"}:
             raise ValueError("Unsupported memory mode")
         self.root = Path(project_root).resolve()
@@ -100,6 +103,7 @@ class MemoryService:
         self.graph = graph
         self.max_tokens = max_tokens
         self.embedder = embedder
+        self.auto_recall = auto_recall
         self.last_trace: dict = {}
         self._wake = threading.Event()
         self._stop = threading.Event()
@@ -222,11 +226,16 @@ class MemoryService:
             if any(not isinstance(values, list) or any(not isinstance(v, str) for v in values)
                    for values in (keywords, entities)):
                 raise ValueError("Keywords/entities must be lists of strings")
+            # An exact repeated fact is a no-op; the new source turn remains in
+            # the evidence archive. Preserve case because identifiers are sensitive.
+            normalized = " ".join(statement.split())
+            if any(" ".join(old["statement"].split()) == normalized for old in existing):
+                continue
             record = make_record(
                 project=self.project, workspace=self.workspace, statement=statement,
                 kind=str(candidate.get("kind", "experience"))[:30],
                 keywords=[redact(v)[:100] for v in keywords[:12]],
-                entities=[v[:200] for v in entities[:6]], evidence=evidence,
+                entities=[redact(v)[:200] for v in entities[:6]], evidence=evidence,
                 source_ids=[e["event_id"] for e in evidence], recorded_at=turn["recorded_at"],
                 origin="extracted", record_id=stable_id(turn["id"], str(index)),
             )
@@ -248,7 +257,7 @@ class MemoryService:
         record = make_record(
             project="" if scope == "user" else self.project,
             workspace=self.workspace if scope == "local" else "",
-            statement=content, scope=scope, kind=kind, keywords=tags,
+            statement=content, scope=scope, kind=kind, keywords=[redact(tag) for tag in tags],
             record_id=stable_id(self.project if scope != "user" else "", self.workspace if scope == "local" else "",
                                 scope, content),
             origin="explicit",
@@ -412,9 +421,11 @@ class MemoryService:
         records = self.store.records(self.project, self.workspace, active_only=False)
         record = next((r for r in records if r["id"] == identity), None)
         if record:
+            visible = {r["id"] for r in records}
             return {**record, "source_turn_ids": list(dict.fromkeys(
                 i.rsplit(":", 1)[0] for i in record["source_ids"]
-            ))}
+            )), "links": [link for link in self.store.links_for(identity)
+                         if link["source"] in visible and link["target"] in visible]}
         turn_id = identity.split("#chunk:", 1)[0]
         turns = self.store.turns(self.project, self.workspace)
         turn = next((t for t in turns if t["id"] == turn_id), None)
@@ -435,7 +446,7 @@ class MemoryService:
                     project="" if scope.value == "user" else self.project,
                     workspace=self.workspace if scope.value == "local" else "",
                     scope=scope.value, statement=redact(entry.content), kind=entry.category,
-                    keywords=entry.tags, recorded_at=entry.created_at, origin="legacy",
+                    keywords=[redact(tag) for tag in entry.tags], recorded_at=entry.created_at, origin="legacy",
                     record_id=stable_id("legacy", scope.value, entry.id, entry.content,
                                         "" if scope.value == "user" else self.project),
                 )

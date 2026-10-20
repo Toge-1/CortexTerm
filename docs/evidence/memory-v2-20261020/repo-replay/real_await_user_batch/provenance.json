@@ -1,0 +1,36 @@
+{
+  "base_commit": "1b8dffb5ca89f4e9238573dd174130faf0e1be2f",
+  "fixed_commit": "d35d4c47b58612ac408135d4411c4e75929bf26f",
+  "task": "Fix batched-tool handling in cortexterm/agent_loop.py. The model can return A, a tool whose result has awaitUser=True, and C in the same batch. Currently C is skipped. Finish every sibling tool call in order, record every result with its original ID, then return the question for the user without another model request. The awaitUser signal may come from any tool, not just a tool named ask_user. Preserve existing callbacks and normal tool-loop behavior.",
+  "history": "Tool orchestration lesson: a batch is one model response. Store its calls before executing their results; user input should begin only after the batch has a result for each call. awaitUser is a property of ToolResult, not a special tool name. Accumulate a pending question across the batch, then leave the outer model loop after all siblings finish. Do not let a later ordinary result erase an earlier awaitUser decision.",
+  "before": {
+    "passed": false,
+    "returncode": 1,
+    "detail": "F                                                                        [100%]\n================================== FAILURES ===================================\n________ test_await_user_finishes_sibling_tool_calls_before_returning _________\n\n    def test_await_user_finishes_sibling_tool_calls_before_returning() -> None:\n        executed: list[str] = []\n    \n        def run_tool(input_data: dict, _context) -> ToolResult:\n            name = input_data[\"name\"]\n            executed.append(name)\n            return ToolResult(\n                ok=True,\n                output=\"Which database?\" if name == \"ask\" else f\"done:{name}\",\n                awaitUser=name == \"ask\",\n            )\n    \n        registry = ToolRegistry(\n            [\n                ToolDefinition(\n                    name=\"batch_tool\",\n                    description=\"batch tool\",\n                    input_schema={\"type\": \"object\"},\n                    validator=lambda value: value,\n                    run=run_tool,\n                )\n            ]\n        )\n        model = ScriptedModel(\n            [\n                AgentStep(\n                    type=\"tool_calls\",\n                    calls=[\n                        {\"id\": \"a\", \"toolName\": \"batch_tool\", \"input\": {\"name\": \"a\"}},\n                        {\"id\": \"ask\", \"toolName\": \"batch_tool\", \"input\": {\"name\": \"ask\"}},\n                        {\"id\": \"c\", \"toolName\": \"batch_tool\", \"input\": {\"name\": \"c\"}},\n                    ],\n                )\n            ]\n        )\n    \n        messages = run_agent_turn(\n            model=model,\n            tools=registry,\n            messages=[{\"role\": \"system\", \"content\": \"sys\"}],\n            cwd=\".\",\n        )\n    \n>       assert executed == [\"a\", \"ask\", \"c\"]\nE       AssertionError: assert ['a', 'ask'] == ['a', 'ask', 'c']\nE         \nE         Right contains one more item: 'c'\nE         Use -v to get more diff\n\n..\\test_hidden_regression.py:143: AssertionError\n=========================== short test summary info ===========================\nFAILED ..\\test_hidden_regression.py::test_await_user_finishes_sibling_tool_calls_before_returning\n1 failed, 9 deselected in 0.63s\n"
+  },
+  "fixed_version": {
+    "passed": true,
+    "returncode": 0,
+    "detail": ".                                                                        [100%]\n1 passed, 9 deselected in 0.07s\n"
+  },
+  "hidden_test_file": "tests/test_agent_loop.py",
+  "regression_test": "test_await_user_finishes_sibling_tool_calls_before_returning",
+  "extraction_calls": [
+    {
+      "seconds": 3.046,
+      "usage": {
+        "input_tokens": 339,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 301,
+        "service_tier": "standard"
+      },
+      "ok": true,
+      "stop_reason": "end_turn",
+      "block_types": [
+        "text"
+      ]
+    }
+  ],
+  "limitation": "Historical lesson is constructed from project knowledge, not a time-verified real session."
+}

@@ -23,6 +23,7 @@ cortexterm --memory off
   "memory": {
     "mode": "raw",
     "autoExtract": false,
+    "autoRecall": false,
     "maxExtractionCalls": 30,
     "maxTokens": 2400,
     "graph": false
@@ -32,15 +33,17 @@ cortexterm --memory off
 
 `hybrid` 可以使用之前提取好的经验而关闭 `autoExtract`。`graph` 是实验开关，不能因为图看起来复杂就认定有用。检索预算是现有估算器的 token 估计，不是服务端精确分词值。
 
+**V2 默认按需调用工具，不自动把搜索结果塞进每次 system prompt。** 模型可调用 `memory_search` / `memory_read`，用户不用手动翻数据库。设置 `autoRecall: true` 才会在每次问题提交后预先注入。原因是实际回放中预先注入并未稳定改善修复；不能把检索到内容等同于需要现在读这些内容。实验脚本显式调用 `context()`，评测的是自动预注入策略；它没有证明工具按需策略的总体修复率更高。
+
 对 `api.deepseek.com` 的后台提取请求，默认显式关闭 thinking，防止有限输出预算全部消耗在思考而没有 JSON；主编码 Agent 不受影响。可用 `memory.extractionThinking: "provider-default"` 恢复提供方默认值，其他提供方保持原设置。依据是 [DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode/) 与 [Anthropic 兼容接口](https://api-docs.deepseek.com/guides/anthropic_api/)；本项目还做了真实请求复测。
 
 ## 实际运行的链路
 
-1. **每轮公开事件留档。** `run_agent_turn()` 包装器创建 TurnRecorder。模型的公开回复、工具调用、工具结果获得稳定事件 ID。压缩换掉上下文列表后，记录器仍继续记录新增事件；不记录隐藏思考块或反复注入的系统提示词。
+1. **每轮公开事件留档。** `run_agent_turn()` 包装器创建 TurnRecorder。模型的公开回复、工具调用、工具结果获得稳定事件 ID。压缩换掉上下文列表后，记录器仍继续记录新增事件；不记录隐藏思考块、系统提示词或程序自动生成的重试/继续指令，防止把它们误当成用户偏好。
 2. **本轮结束或异常时入库。** 原始公开事件与处理队列同一次 SQLite 写入，数据库在 `%USERPROFILE%\.cortexterm\memory-v2\memory.sqlite3`。这是独立的持久化证据，不依赖 session 自动保存何时发生。尚未结束的一轮仍存在内存里，强制杀进程会丢掉这一轮尚未入库的记忆，不能称为逐事件 WAL。
 3. **可选后台提取。** 工作线程领取本工作目录的任务，网络调用期间不持有数据库事务。模型最多提出四条经验，并提供原文中的准确引文；程序验证事件 ID、引文和更新目标。失败保留原文、标记失败，后续可手动重试，不阻塞主 Agent。
-4. **修正旧知识。** 新记录可以 `supersedes` 旧记录；一个事务中写入新结论、标记旧结论失效、记录更新关系。自动提取不能覆盖显式 `remember` 写入的记忆。原文和旧记录不删除。
-5. **下次提问时检索。** TUI 在后台线程刷新 system prompt，先按仓库/工作目录/作用域过滤，再查询原文片段、经验正文和关键词，按排名融合；最多注入约定预算，模型还能 `memory_search`、`memory_read` 查细节。
+4. **去重与修正旧知识。** 提取提示要求已知事实不再重复写入，程序也将与候选旧记录完全相同的陈述视为 NOOP；新会话原文仍保留。新结论可以 `supersedes` 旧记录；一个事务中写入新结论、标记旧结论失效、记录更新关系。自动提取不能覆盖显式 `remember` 写入的记忆。原文和旧记录不删除。
+5. **下次需要时检索。** 默认通过模型调用 `memory_search`、`memory_read`。启用 `autoRecall` 后，TUI 才在后台线程刷新记忆上下文：先按仓库/工作目录/作用域过滤，再查询原文片段、经验正文和关键词，按排名融合；最多注入约定预算。
 
 这里没有假装做了“永远正确的事实库”。引文匹配只能证明出处真实，不能证明提取的结论一定正确，更不能把 assistant 自称测试成功当作客观验证。
 

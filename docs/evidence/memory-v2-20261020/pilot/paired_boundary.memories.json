@@ -1,0 +1,221 @@
+[
+  {
+    "id": "c95bee17f4852c851662066e",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In the conversation reducer, a cut boundary index is legal only if the message at that index has role user, assistant, assistant_progress, or assistant_tool_call; a tool_result role cannot be a legal start even when its pairing is malformed. A cut is illegal when any removed tool call ID appears among retained tool results. Pick the first legal index AT OR AFTER the proposed index, never move toward older messages; if none exists return len(messages), meaning summarize the complete span.",
+    "keywords": [
+      "assistant_tool_call",
+      "tool_result",
+      "assistant_progress",
+      "legal cut roles",
+      "cut boundary",
+      "toolUseId",
+      "len(messages)",
+      "first legal index",
+      "removed tool call ID",
+      "paired boundary"
+    ],
+    "entities": [
+      "conversation reducer"
+    ],
+    "source_ids": [
+      "paired_boundary-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-0:1",
+        "role": "user",
+        "quote": "Legal cut roles are user, assistant, assistant_progress, assistant_tool_call. A cut is illegal when any removed tool call ID appears among retained tool results. Pick the first legal index AT OR AFTER the proposed index, never move toward older messages. If none exists return len(messages), meaning summarize the complete span. Do not treat a result as a legal start, even when its pairing is malformed."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "51266d25ebb06cf498895fa0",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "In the conversation reducer, messages before the cut boundary are summarized and messages from the cut onward remain. Internal call messages use role='assistant_tool_call' and carry a toolUseId; their corresponding results use role='tool_result' with the same toolUseId.",
+    "keywords": [
+      "assistant_tool_call",
+      "tool_result",
+      "toolUseId",
+      "conversation reducer",
+      "cut boundary",
+      "summarize",
+      "retained messages",
+      "internal call messages"
+    ],
+    "entities": [
+      "conversation reducer"
+    ],
+    "source_ids": [
+      "paired_boundary-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-0:1",
+        "role": "user",
+        "quote": "Conversation reducer design: messages before cut are summarized, messages from cut onward remain. Internal call messages have role='assistant_tool_call' and toolUseId; results have role='tool_result' with the same toolUseId."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "fa5cac22077d8451c8aaffb8",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "In the build dashboard, midnight blue and pale green are presentation-only colors; they are styling choices and should not be interpreted as or reused for semantic state indicators.",
+    "keywords": [
+      "midnight blue",
+      "pale green",
+      "build dashboard",
+      "presentation-only colors"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "paired_boundary-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-1:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "b977c5b1a54f968133c24874",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "In this project there is a separate archive utility that maps document IDs to stable UUIDs and exports zip manifests. The only known facts are these two responsibilities; no implementation details or usage conditions were provided.",
+    "keywords": [
+      "archive utility",
+      "document IDs",
+      "stable UUIDs",
+      "zip manifests",
+      "文档ID",
+      "稳定UUID",
+      "压缩包清单"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "paired_boundary-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-2:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "3c295f718e7d379d9cabb903",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "In the image thumbnail job, generated thumbnails must preserve the source aspect ratio and the job must leave original photographs untouched. No implementation details beyond this constraint were provided.",
+    "keywords": [
+      "image thumbnail job",
+      "aspect ratio",
+      "original photographs",
+      "untouched"
+    ],
+    "entities": [
+      "image thumbnail job",
+      "original photographs"
+    ],
+    "source_ids": [
+      "paired_boundary-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-3:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "a707cc01791c246bcc308402",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-3mfhc2dp\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In billing reports, amounts must be grouped by currency and different currencies must never be added directly; no other billing report behavior is specified.",
+    "keywords": [
+      "billing reports",
+      "currency",
+      "amounts",
+      "group by currency",
+      "different currencies"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "paired_boundary-history-5:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "paired_boundary-history-5:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780018000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

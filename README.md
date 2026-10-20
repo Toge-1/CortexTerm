@@ -7,7 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![Runtime Dependencies: 0](https://img.shields.io/badge/runtime_dependencies-0-f97316?style=for-the-badge)](pyproject.toml)
-[![Tests: 228 passed](https://img.shields.io/badge/tests-228%20passed-22c55e?style=for-the-badge)](tests/)
+[![Tests: 357 passed](https://img.shields.io/badge/tests-357%20passed-22c55e?style=for-the-badge)](tests/)
 
 **🇨🇳 中文 | 🇺🇸 [English](README.en.md)**
 
@@ -91,22 +91,24 @@ cortexterm
 - **终端交互界面**：备用屏幕 TUI、面板渲染、滚动和工具卡片折叠。
 - **Agent 工具循环**：模型可以连续调用工具、读取结果并继续推理，直到给出最终回复。
 - **上下文管理**：默认采用 Pi 式结构化摘要，保留最近 token、完整工具调用关系和旧消息归档；支持压缩失败重试、超预算暂停，以及按需搜索和读取压缩前的原文。也可切回原删除式策略。详见 [压缩机制](docs/context-compaction.md)。
-- **长期记忆**：按作用域保存偏好、约定、架构、命令、环境和决策等信息。
+- **长期记忆**：保留原版按作用域记忆；可用 `cortexterm --memory raw` 按需搜索跨会话原文，或通过 `--memory hybrid --memory-extract` 试用带出处的后台经验提取、旧知识修正和混合检索。自动预注入与关联扩展默认关闭。详见 [Memory V2](docs/memory-v2.md) 与 [实验边界](docs/memory-v2-evaluation.md)。
 - **会话持久化**：保存与恢复对话，支持自动保存；通过跨进程占用锁防止多个实例同时恢复、覆盖同一会话。详见 [会话占用保护](docs/session-ownership.md)。
 - **权限控制**：工具执行前进行允许、拒绝或询问判断。
 - **MCP 集成**：通过配置接入外部 MCP Server，将其能力注册为可调用工具。
-- **31 个内置工具**：覆盖文件、命令、代码分析、测试、Git、Web、历史归档和开发辅助。
+- **33 个内置工具**：覆盖文件、命令、代码分析、测试、Git、Web、历史归档和开发辅助。
 
 ---
 
 ## 🛠️ 内置工具
 
-以下 31 个工具来自默认工具注册表；通过 MCP 接入的外部工具不计入其中。
+以下 33 个工具来自默认工具注册表；通过 MCP 接入的外部工具不计入其中。
 
 | 类别 | 工具 | 功能 |
 |------|------|------|
 | 用户交互与记忆 | `ask_user` | 在执行过程中向用户提问 |
 | 用户交互与记忆 | `remember` | 写入长期记忆 |
+| 用户交互与记忆 | `memory_search` | 在 Memory V2 中按任务、时间与作用域搜索历史经验 |
+| 用户交互与记忆 | `memory_read` | 按 ID 读取记忆、原始事件与过时记录，支持分页 |
 | 历史归档 | `history_search` | 搜索当前会话被压缩的原始消息，返回编号和片段 |
 | 历史归档 | `history_read` | 按编号分段读取归档原文和工具调用关联 |
 | 文件操作 | `list_files` | 列出目录内容 |

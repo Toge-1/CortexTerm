@@ -1,0 +1,142 @@
+{
+  "source_commit": "9820b65233ae355bc953faf3218b4abcadd18e9a",
+  "purpose": "Targeted recheck of two previously truncated extraction inputs; not an end-to-end rerun",
+  "thinking_disabled": true,
+  "calls": [
+    {
+      "seconds": 4.936,
+      "usage": {
+        "input_tokens": 336,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 387,
+        "service_tier": "standard"
+      },
+      "ok": true,
+      "stop_reason": "end_turn",
+      "block_types": [
+        "text"
+      ]
+    },
+    {
+      "seconds": 1.064,
+      "usage": {
+        "input_tokens": 81,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 256,
+        "output_tokens": 6,
+        "service_tier": "standard"
+      },
+      "ok": true,
+      "stop_reason": "end_turn",
+      "block_types": [
+        "text"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "case": "leased_workspace",
+      "stats": {
+        "records": 2,
+        "active": 2,
+        "jobs": {
+          "done": 1
+        }
+      },
+      "records": [
+        {
+          "id": "71ac702a6a671f7ff2f3aba1",
+          "project": "c:\\users\\34781\\appdata\\local\\temp\\memory-extraction-recheck-_0zx64cu",
+          "workspace": "c:\\users\\34781\\appdata\\local\\temp\\memory-extraction-recheck-_0zx64cu",
+          "scope": "local",
+          "kind": "procedure",
+          "statement": "When editing work items through the workspace module's public API edit(store, key, transform), acquire store.lease(key) as a context manager BEFORE store.load(key), then call transform(old), call store.save(key, new), and return new. Release the lease on both success and any exception. Locking only the save step is insufficient and loses concurrent updates.",
+          "keywords": [
+            "edit",
+            "lease",
+            "load",
+            "save",
+            "transform",
+            "context manager",
+            "workspace",
+            "work item",
+            "锁",
+            "租约",
+            "编辑"
+          ],
+          "entities": [
+            "workspace module",
+            "lease_store",
+            "transport SDK"
+          ],
+          "source_ids": [
+            "leased_workspace:0"
+          ],
+          "evidence": [
+            {
+              "event_id": "leased_workspace:0",
+              "role": "user",
+              "quote": "The public edit API is edit(store, key, transform). store.lease(key) is a context manager. Acquire it BEFORE store.load(key), then call transform(old), store.save(key,new), return new. Release on success and on any exception. Locking only save loses updates."
+            }
+          ],
+          "recorded_at": 1792496796.2789433,
+          "occurred_at": null,
+          "status": "active",
+          "version": 1,
+          "origin": "extracted",
+          "file_hashes": {},
+          "uses": 0
+        },
+        {
+          "id": "4d2660e92aad7efdc6ed9db5",
+          "project": "c:\\users\\34781\\appdata\\local\\temp\\memory-extraction-recheck-_0zx64cu",
+          "workspace": "c:\\users\\34781\\appdata\\local\\temp\\memory-extraction-recheck-_0zx64cu",
+          "scope": "local",
+          "kind": "environment",
+          "statement": "The transport SDK intentionally does not expose a global process lock, so concurrency control must rely on per-key mechanisms such as store.lease(key).",
+          "keywords": [
+            "transport SDK",
+            "global process lock",
+            "concurrency",
+            "lease",
+            "全局进程锁",
+            "并发"
+          ],
+          "entities": [
+            "transport SDK",
+            "lease_store"
+          ],
+          "source_ids": [
+            "leased_workspace:0"
+          ],
+          "evidence": [
+            {
+              "event_id": "leased_workspace:0",
+              "role": "user",
+              "quote": "The transport SDK intentionally does not expose a global process lock."
+            }
+          ],
+          "recorded_at": 1792496796.2789433,
+          "occurred_at": null,
+          "status": "active",
+          "version": 1,
+          "origin": "extracted",
+          "file_hashes": {},
+          "uses": 0
+        }
+      ]
+    },
+    {
+      "case": "compaction_adapter",
+      "stats": {
+        "records": 0,
+        "active": 0,
+        "jobs": {
+          "done": 1
+        }
+      },
+      "records": []
+    }
+  ]
+}

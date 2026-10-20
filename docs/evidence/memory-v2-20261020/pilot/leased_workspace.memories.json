@@ -1,0 +1,188 @@
+[
+  {
+    "id": "550544f8c88632b0d483c36b",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "For the build dashboard UI, midnight blue and pale green are used as presentation-only colors; they carry no functional meaning and should not be interpreted as status or state indicators.",
+    "keywords": [
+      "build dashboard",
+      "midnight blue",
+      "pale green",
+      "presentation-only colors",
+      "colors",
+      "构建仪表板",
+      "午夜蓝",
+      "淡绿色",
+      "仅展示颜色"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "leased_workspace-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "leased_workspace-history-1:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "1207a7910dc65e06ecd8a03f",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "The archive utility is a separate component that maps document IDs to stable UUIDs and exports zip manifests; this behavior is specific to that archive utility and does not necessarily apply to other components.",
+    "keywords": [
+      "archive utility",
+      "document IDs",
+      "stable UUIDs",
+      "zip manifests",
+      "归档工具",
+      "文档 ID",
+      "稳定 UUID",
+      "zip 清单"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "leased_workspace-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "leased_workspace-history-2:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "3ac8a1743824159d55b2f87f",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "For the image thumbnail job, generated thumbnails must preserve the original photograph's aspect ratio, and the job must leave original photographs untouched (read-only/non-destructive). This constraint applies specifically to the image thumbnail job and may not generalize to other image-processing components.",
+    "keywords": [
+      "aspect ratio",
+      "thumbnail",
+      "original photographs",
+      "image processing",
+      "non-destructive",
+      "纵横比",
+      "缩略图",
+      "原始照片"
+    ],
+    "entities": [
+      "image thumbnail job"
+    ],
+    "source_ids": [
+      "leased_workspace-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "leased_workspace-history-3:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "d5ee5d71424ae5d4e6c8764a",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "For the referenced different mobile repository, the unit-test procedure was requested to run with a simulator and with code signing disabled. This applies only to that different mobile repository and should not be assumed for other iOS/mobile projects unless confirmed.",
+    "keywords": [
+      "unit tests",
+      "simulator",
+      "code signing disabled",
+      "mobile repository",
+      "CODE_SIGNING_ALLOWED=NO"
+    ],
+    "entities": [
+      "different mobile repository"
+    ],
+    "source_ids": [
+      "leased_workspace-history-4:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "leased_workspace-history-4:1",
+        "role": "user",
+        "quote": "For a different mobile repository, run unit tests with a simulator and code signing disabled."
+      }
+    ],
+    "recorded_at": 1780014400.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "da79e182da8aeeec54ddc6cb",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-x0jljvrc\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "Billing reports must group monetary amounts by currency and must never directly add amounts denominated in different currencies. This constraint applies specifically to billing reports; other reporting or aggregation components may have different rules unless confirmed.",
+    "keywords": [
+      "billing reports",
+      "currency",
+      "group by currency",
+      "multi-currency",
+      "amount aggregation",
+      "do not add different currencies"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "leased_workspace-history-5:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "leased_workspace-history-5:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780018000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

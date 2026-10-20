@@ -27,6 +27,7 @@ def create_memory_manager(cwd: str, runtime: dict | None) -> MemoryManager:
             Path(cwd), CORTEXTERM_DIR / "memory-v2" / "memory.sqlite3",
             model=model, mode=settings.get("mode", "hybrid"),
             graph=settings.get("graph", False),
+            auto_recall=settings.get("autoRecall", False),
             max_tokens=max(100, min(8000, int(settings.get("maxTokens", 2400)))),
         )
         service.import_legacy(manager)

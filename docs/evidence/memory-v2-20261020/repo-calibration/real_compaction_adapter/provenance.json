@@ -1,0 +1,37 @@
+{
+  "base_commit": "d35d4c47b58612ac408135d4411c4e75929bf26f",
+  "fixed_commit": "485ebb9b6d093dc154b5a23f6c9490b48e03a9e2",
+  "task": "Fix compaction-summary conversion in cortexterm/anthropic_adapter.py. After compaction, a retained suffix may start with assistant tool_use. The current converter places the older conversation summary in the system prompt, leaving no user context before that suffix. Represent marked summaries as user conversation context, including legacy checkpoints whose internal role is system. Keep the real system prompt separate, preserve tool-use/result pairs, and enclose summary text in <summary> newline ... newline </summary>. Use the existing conversion conventions and keep existing tests passing.",
+  "history": "Provider-boundary lesson: isCompactionSummary describes the semantic meaning of a checkpoint; check it before ordinary role dispatch. Internal storage roles need not equal API roles. The system prompt must contain instructions, not a summary of user/assistant history. A summary replaces old conversational turns, so convert it to a user text block. Reuse _push_anthropic_message to merge adjacent same-role blocks without losing tool IDs.",
+  "before": {
+    "passed": false,
+    "returncode": 1,
+    "detail": "F                                                                        [100%]\n================================== FAILURES ===================================\n_____ test_anthropic_adapter_sends_compaction_summary_as_first_user_turn ______\n\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001F74BA188A0>\n\n    def test_anthropic_adapter_sends_compaction_summary_as_first_user_turn(monkeypatch) -> None:\n        requests: list[dict] = []\n    \n        def fake_urlopen(request, timeout=60):\n            del timeout\n            requests.append(json.loads(request.data.decode(\"utf-8\")))\n            return DummyResponse(\n                {\"stop_reason\": \"end_turn\", \"content\": [{\"type\": \"text\", \"text\": \"<final>done</final>\"}]}\n            )\n    \n        monkeypatch.setattr(\"urllib.request.urlopen\", fake_urlopen)\n        adapter = AnthropicModelAdapter(\n            {\"model\": \"claude\", \"baseUrl\": \"https://api.anthropic.com\", \"authToken\": \"x\"},\n            _tool_registry(),\n        )\n    \n        adapter.next(\n            [\n                {\"role\": \"system\", \"content\": \"base system prompt\"},\n                {\n                    \"role\": \"system\",\n                    \"content\": \"summary of the earlier conversation\",\n                    \"isCompactionSummary\": True,\n                },\n                {\n                    \"role\": \"assistant_tool_call\",\n                    \"toolUseId\": \"tool-1\",\n                    \"toolName\": \"read_file\",\n                    \"input\": {\"path\": \"README.md\"},\n                },\n                {\n                    \"role\": \"tool_result\",\n                    \"toolUseId\": \"tool-1\",\n                    \"toolName\": \"read_file\",\n                    \"content\": \"file contents\",\n                    \"isError\": False,\n                },\n            ]\n        )\n    \n        body = requests[0]\n>       assert body[\"system\"] == \"base system prompt\"\nE       AssertionError: assert 'base system ... conversation' == 'base system prompt'\nE         \nE         - base system prompt\nE         + base system prompt\nE         ?                   +\nE         + \nE         + summary of the earlier conversation\n\n..\\test_hidden_regression.py:116: AssertionError\n=========================== short test summary info ===========================\nFAILED ..\\test_hidden_regression.py::test_anthropic_adapter_sends_compaction_summary_as_first_user_turn\n1 failed, 3 deselected in 0.63s\n"
+  },
+  "fixed_version": {
+    "passed": true,
+    "returncode": 0,
+    "detail": ".                                                                        [100%]\n1 passed, 3 deselected in 0.04s\n"
+  },
+  "hidden_test_file": "tests/test_anthropic_adapter.py",
+  "regression_test": "test_anthropic_adapter_sends_compaction_summary_as_first_user_turn",
+  "extraction_calls": [
+    {
+      "seconds": 28.421,
+      "usage": {
+        "input_tokens": 164,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 256,
+        "output_tokens": 2400,
+        "service_tier": "standard"
+      },
+      "ok": false,
+      "stop_reason": "max_tokens",
+      "block_types": [
+        "thinking"
+      ],
+      "error_type": "ValueError"
+    }
+  ],
+  "limitation": "Historical lesson is constructed from project knowledge, not a time-verified real session."
+}

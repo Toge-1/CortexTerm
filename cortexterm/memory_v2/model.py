@@ -70,6 +70,8 @@ class MemoryModel:
             "At most 4 memories, 900 characters each, at most 12 keywords and 6 entities. "
             "Do not infer success from an assistant claim. Preserve failures and uncertainty. "
             "Do not save secrets, generic advice or transient task status. "
+            "If existing memories already cover the same fact, return no new memory for that fact. "
+            "Consolidate overlapping new observations into one concise record when their evidence supports it. "
             "Only supersede an existing ID when new evidence EXPLICITLY corrects it under the SAME "
             "conditions, never merely because two statements are similar. Do not fabricate IDs. "
             "If nothing is reusable return an empty memories array.",

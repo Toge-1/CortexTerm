@@ -1,0 +1,197 @@
+[
+  {
+    "id": "2f57f345b0abd6d93a236032",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In the approval review gate, before publishing a new approval request, reset the shared result and clear the Event first. Publishing can synchronously deliver the answer, so clearing after publish loses that wakeup. Main UI writes result['decision'] before event.set(). The request(event,result,publish) path must wait for the event (not busy-wait) and only then return result['decision']; historical stale decisions must not survive into publish.",
+    "keywords": [
+      "result['decision']",
+      "event.set()",
+      "request(event,result,publish)",
+      "clear Event",
+      "shared result",
+      "wakeup",
+      "race",
+      "approval request",
+      "publish",
+      "busy waiting",
+      "stale decision",
+      "review gate"
+    ],
+    "entities": [
+      "Main UI",
+      "review gate",
+      "approval request",
+      "shared result",
+      "Event",
+      "request path"
+    ],
+    "source_ids": [
+      "approval_wakeup-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "approval_wakeup-history-0:1",
+        "role": "user",
+        "quote": "Review gate race diagnosis: reset the shared result and clear the Event before publishing a new approval request. Publishing can synchronously deliver an answer; clearing after publish loses that wakeup. Main UI writes result['decision'] before event.set(). request(event,result,publish) must wait for the event, then return result['decision']. Never use busy waiting. Historical stale decisions must not survive into publish."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "d9d9cacb1e93ddbd5f4ab202",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "The build dashboard uses midnight blue and pale green as presentation-only colors; they should not be used to convey semantic state.",
+    "keywords": [
+      "midnight blue",
+      "pale green",
+      "build dashboard",
+      "presentation-only colors",
+      "UI colors"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "approval_wakeup-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "approval_wakeup-history-1:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "1242e26485efdbbd69904728",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "In this project, a separate archive utility maps document IDs to stable UUIDs and exports zip manifests; it is separate from the main codebase.",
+    "keywords": [
+      "archive utility",
+      "document IDs",
+      "stable UUIDs",
+      "zip manifests",
+      "文档ID",
+      "稳定UUID",
+      "zip清单"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "approval_wakeup-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "approval_wakeup-history-2:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "8d9798cf2e4a92e40c247dd5",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "In this project the image thumbnail job must preserve image aspect ratio and leave original photographs untouched; this applies only to that thumbnail job, not to all image handling.",
+    "keywords": [
+      "image thumbnail job",
+      "aspect ratio",
+      "original untouched",
+      "thumbnail",
+      "图像缩略图",
+      "纵横比",
+      "原始照片",
+      "保持宽高比"
+    ],
+    "entities": [
+      "image thumbnail job"
+    ],
+    "source_ids": [
+      "approval_wakeup-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "approval_wakeup-history-3:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "bc81cd6a61e3d6f870d9b637",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-sk7sqocp\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In the billing reports subsystem, monetary amounts are grouped by currency and must never be added directly across different currencies; this rule applies to billing report aggregation, not necessarily to other currency handling.",
+    "keywords": [
+      "currency",
+      "billing reports",
+      "amounts",
+      "aggregation",
+      "账单报表",
+      "货币",
+      "币种",
+      "金额"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "approval_wakeup-history-5:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "approval_wakeup-history-5:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780018000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

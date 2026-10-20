@@ -1,0 +1,2 @@
+# Frozen experiment artifacts are checked by SHA-256; preserve exact bytes on Windows.
+docs/evidence/memory-v2-20261020/** -text

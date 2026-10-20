@@ -355,7 +355,8 @@ class MemoryManager:
         respecting token limits.
         """
         if getattr(self, "v2", None) is not None:
-            return self.v2.context(query, max_tokens=min(max_tokens, self.v2.max_tokens))
+            return (self.v2.context(query, max_tokens=min(max_tokens, self.v2.max_tokens))
+                    if self.v2.auto_recall else "")
         from cortexterm.context_manager import estimate_tokens
         
         parts = []

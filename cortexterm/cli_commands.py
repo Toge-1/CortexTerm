@@ -166,6 +166,7 @@ def try_handle_local_command(user_input: str, tools=None, memory_mgr=None) -> st
                     f"Active records: {stats['active']} / {stats['records']}",
                     f"Extraction queue: {stats['jobs']}",
                     f"Automatic extraction: {'on' if service.model else 'off'}",
+                    f"Automatic context injection: {'on' if service.auto_recall else 'off (use memory tools)'}",
                     f"Extraction calls this process: {len(calls)}",
                     f"Graph expansion: {'on' if service.graph else 'off'}",
                     f"Context budget: {service.max_tokens} estimated tokens",

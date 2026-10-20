@@ -1,0 +1,202 @@
+[
+  {
+    "id": "12ba147587ab2da3688720d3",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "scope": "local",
+    "kind": "failure",
+    "statement": "In Orbit cache retention filtering, do not confuse vendor millisecond timestamps with retention seconds. The received record field is Unix milliseconds, window_s is seconds, and now_ms is milliseconds. Keep records whose age is strictly less than window_s*1000; equality is expired. Future timestamps must remain, input order must be preserved, and input dictionaries must never be mutated; later readers consume the original received field unchanged. This applies to Orbit cache retention logic where vendor timestamps are milliseconds.",
+    "keywords": [
+      "Orbit cache",
+      "window_s",
+      "now_ms",
+      "Unix milliseconds",
+      "millisecond timestamps",
+      "retention seconds",
+      "strictly less",
+      "equality expired",
+      "future timestamps",
+      "input order",
+      "immutability",
+      "缓存过期"
+    ],
+    "entities": [
+      "Orbit cache"
+    ],
+    "source_ids": [
+      "clock_units-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "clock_units-history-0:1",
+        "role": "user",
+        "quote": "Incident 84 in Orbit cache: do not confuse vendor's millisecond timestamps with retention seconds. Record field received is Unix milliseconds; window_s is seconds; now_ms is milliseconds. Keep records whose age is strictly less than window_s*1000; equality is expired. Future timestamps must remain, input order must be preserved, and never mutate input dictionaries. A later reader consumes the original received field unchanged."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "09f0e580de0c851375eafd5e",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "The build dashboard uses midnight blue and pale green as presentation-only colors; these are visual choices for the UI and must not affect logic, calculations, or data semantics. Applies only to the build dashboard presentation layer.",
+    "keywords": [
+      "build dashboard",
+      "midnight blue",
+      "pale green",
+      "presentation-only",
+      "colors",
+      "UI",
+      "午夜蓝",
+      "淡绿色"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "clock_units-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "clock_units-history-1:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "40f39f5321e5ec0efbbdbf0d",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests; this is an existing subsystem behavior, so when stable external references are needed use that utility's document-ID-to-UUID mapping and treat its exports as ZIP manifests. Applies only to the separate archive utility, not to general document ID handling.",
+    "keywords": [
+      "archive utility",
+      "document IDs",
+      "stable UUIDs",
+      "zip manifests",
+      "export",
+      "文档ID",
+      "稳定UUID",
+      "ZIP清单"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "clock_units-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "clock_units-history-2:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "6829d8d2dd13a660683127bc",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched. This constraint applies specifically to the image thumbnail job; other image processing subsystems are not covered by this statement.",
+    "keywords": [
+      "image thumbnail job",
+      "thumbnail",
+      "aspect ratio",
+      "preserve aspect ratio",
+      "original photographs",
+      "untouched",
+      "image processing",
+      "缩略图",
+      "宽高比",
+      "原始照片",
+      "保持",
+      "不修改"
+    ],
+    "entities": [
+      "image thumbnail job"
+    ],
+    "source_ids": [
+      "clock_units-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "clock_units-history-3:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "387e24d0ccee84d2308edcc6",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-ab5ae_lk\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "Billing report generation must group monetary amounts by currency and must never add different currencies directly. This constraint applies to billing reports; it does not necessarily constrain other financial or reporting subsystems.",
+    "keywords": [
+      "billing reports",
+      "currency",
+      "group by currency",
+      "monetary amounts",
+      "multi-currency",
+      "账单报表",
+      "货币",
+      "按币种分组",
+      "金额",
+      "报表"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "clock_units-history-5:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "clock_units-history-5:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780018000.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

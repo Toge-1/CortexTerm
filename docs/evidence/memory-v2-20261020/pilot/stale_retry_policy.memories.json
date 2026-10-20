@@ -1,0 +1,233 @@
+[
+  {
+    "id": "1aa1e233aff60c1f13107ef0",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "The old Vela request contract specified that transient statuses 408, 429, and all 5xx responses should be retried. For the original client, HTTP 409 conflicts were also retried. This reflects an older contract and may not match current behavior.",
+    "keywords": [
+      "retry policy",
+      "HTTP 408",
+      "HTTP 429",
+      "5xx",
+      "409 conflict",
+      "Vela request contract",
+      "original client",
+      "stale_retry_policy"
+    ],
+    "entities": [
+      "Vela request contract",
+      "original client"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-0:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-0:1",
+        "role": "user",
+        "quote": "Old Vela request contract: transient statuses 408, 429 and all 5xx should retry. For the original client, 409 conflicts also retried."
+      }
+    ],
+    "recorded_at": 1780000000.0,
+    "occurred_at": null,
+    "status": "superseded",
+    "version": 2,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "4ac63116789066ed7beaf947",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "decision",
+    "statement": "After the Vela v2 deployment correction, HTTP 409 is a permanent business conflict and must never be retried. Retry only HTTP 408, 429, or status codes from 500 through 599. All other statuses, including 600+, are permanent. The public function retryable(status) returns a boolean.",
+    "keywords": [
+      "retryable",
+      "retryable(status)",
+      "HTTP 409",
+      "408",
+      "429",
+      "500-599",
+      "600+",
+      "Vela",
+      "retry policy",
+      "重试策略",
+      "状态码",
+      "冲突"
+    ],
+    "entities": [
+      "Vela v2",
+      "retryable"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-1:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-1:1",
+        "role": "user",
+        "quote": "Correction after the Vela v2 deployment: 409 is a permanent business conflict and must NEVER retry. Retry only 408, 429, or integers from 500 through 599. All other statuses, including 600+, are permanent. This supersedes the earlier retry-all-conflicts policy for Vela. The public function retryable(status) returns a boolean."
+      }
+    ],
+    "recorded_at": 1780003600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "11488cc25a1e1dcdd668313f",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "The build dashboard uses midnight blue and pale green as presentation-only colors, so they carry no semantic meaning and should not be used to encode status or state in that UI.",
+    "keywords": [
+      "midnight blue",
+      "pale green",
+      "build dashboard",
+      "presentation-only colors",
+      "color semantics"
+    ],
+    "entities": [
+      "build dashboard"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-2:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-2:1",
+        "role": "user",
+        "quote": "Build dashboard uses midnight blue and pale green; these are presentation-only colors."
+      }
+    ],
+    "recorded_at": 1780007200.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "e50b09da7816dcc41b90e56d",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "environment",
+    "statement": "A separate archive utility in this project maps document IDs to stable UUIDs and exports zip manifests. The utility is distinct from other components; its exact name is not specified in the event.",
+    "keywords": [
+      "archive utility",
+      "document ID",
+      "stable UUID",
+      "zip manifest",
+      "文档ID",
+      "稳定UUID",
+      "zip清单",
+      "导出"
+    ],
+    "entities": [
+      "archive utility"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-3:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-3:1",
+        "role": "user",
+        "quote": "A separate archive utility maps document IDs to stable UUIDs and exports zip manifests."
+      }
+    ],
+    "recorded_at": 1780010800.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "ff5a37e324d8c0d0ac82d86a",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "preference",
+    "statement": "For the image thumbnail job, generated thumbnails must preserve the original image's aspect ratio, and original photographs must remain untouched/unmodified. This constraint applies only to the image thumbnail job, not to other image processing components.",
+    "keywords": [
+      "image thumbnail job",
+      "thumbnail",
+      "aspect ratio",
+      "original photographs",
+      "image processing",
+      "缩略图",
+      "纵横比",
+      "原始照片",
+      "图像处理"
+    ],
+    "entities": [
+      "image thumbnail job"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-4:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-4:1",
+        "role": "user",
+        "quote": "The image thumbnail job must preserve aspect ratio and leave original photographs untouched."
+      }
+    ],
+    "recorded_at": 1780014400.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  },
+  {
+    "id": "aeaf1f8f4a27517de11ec769",
+    "project": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "workspace": "c:\\users\\34781\\appdata\\local\\temp\\cortex-memory-eval-0cf2bsa2\\workspace",
+    "scope": "local",
+    "kind": "procedure",
+    "statement": "In billing reports, monetary amounts must be grouped by currency, and amounts in different currencies must never be added directly. This applies only to billing report aggregation and does not by itself specify any conversion mechanism for other components.",
+    "keywords": [
+      "billing reports",
+      "currency",
+      "group by currency",
+      "monetary amounts",
+      "aggregation",
+      "currency conversion",
+      "multi-currency"
+    ],
+    "entities": [
+      "billing reports"
+    ],
+    "source_ids": [
+      "stale_retry_policy-history-6:1"
+    ],
+    "evidence": [
+      {
+        "event_id": "stale_retry_policy-history-6:1",
+        "role": "user",
+        "quote": "Billing reports group amounts by currency and never add different currencies directly."
+      }
+    ],
+    "recorded_at": 1780021600.0,
+    "occurred_at": null,
+    "status": "active",
+    "version": 1,
+    "origin": "extracted",
+    "file_hashes": {},
+    "uses": 0
+  }
+]

@@ -78,6 +78,8 @@ def test_secret_redaction_and_raw_evidence(memory):
     text = json.dumps(memory.read(rec.id))
     assert "hunter2" not in text
     assert "REDACTED" in text
+    identity = memory.remember("A safe fact", "local", "general", ["password=hunter2"])
+    assert "hunter2" not in json.dumps(memory.read(identity))
 
 
 def test_supersession_atomic_and_history_readable(memory):
@@ -254,6 +256,7 @@ def test_explicit_correction_preserves_previous_evidence(memory):
     new = memory.remember("Never retry 409 errors", "project", "decision", ["retry"], [old])
     assert memory.read(old)["status"] == "superseded"
     assert memory.read(new)["status"] == "active"
+    assert {"source": new, "target": old, "kind": "supersedes"} in memory.read(new)["links"]
     assert old not in [r["id"] for r in memory.search("409")["results"]]
 
 
@@ -336,3 +339,44 @@ def test_extractor_reasoning_setting_is_provider_scoped():
         assert ("thinking" in requests[0]) is expected
         if expected:
             assert requests[0]["thinking"] == {"type": "disabled"}
+
+
+def test_runtime_prefetch_is_opt_in_while_memory_tools_remain_usable(memory):
+    from cortexterm.memory import MemoryManager
+    from cortexterm.tools.memory_tools import memory_search_tool
+    manager = MemoryManager.__new__(MemoryManager)
+    manager.v2 = memory
+    memory.remember("Use the workspace lease before loading", "local", "procedure", ["workspace"])
+    assert manager.get_relevant_context(query="workspace") == ""
+    result = memory_search_tool.run({"query": "workspace", "limit": 5},
+                                   ToolContext(cwd=str(memory.root), memory_service=memory))
+    assert result.ok and "workspace lease" in result.output
+    memory.auto_recall = True
+    assert "workspace lease" in manager.get_relevant_context(query="workspace")
+
+
+def test_retry_nudges_are_not_misrecorded_as_human_preferences(memory):
+    class Model:
+        calls = 0
+        def next(self, messages):
+            self.calls += 1
+            return AgentStep(type="assistant", content="" if self.calls == 1 else "finished")
+    run_agent_turn(model=Model(), tools=ToolRegistry([]), cwd=str(memory.root),
+                   messages=[{"role": "user", "content": "the real human request"}],
+                   memory_service=memory)
+    events = memory.store.turns(memory.project, memory.workspace)[0]["events"]
+    assert [e["content"] for e in events if e["role"] == "user"] == ["the real human request"]
+
+
+def test_duplicate_extracted_fact_is_noop_but_both_sources_remain(memory):
+    class Extractor:
+        def extract(self, turn, existing):
+            return {"memories": [{"statement": "Use py -m pytest", "evidence": [
+                {"event_id": turn["events"][0]["id"], "quote": "py -m pytest"}]}]}
+    for index in range(2):
+        memory.model = None
+        memory.capture(TurnRecorder("Use py -m pytest", turn_id=f"repeated-{index}"))
+        memory.model = Extractor()
+        assert memory.process_one()
+    assert len(memory.store.records(memory.project, memory.workspace)) == 1
+    assert len(memory.store.turns(memory.project, memory.workspace)) == 2
