@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from urllib.parse import urlparse
 
 from cortexterm.anthropic_adapter import AnthropicModelAdapter
 from cortexterm.tooling import ToolRegistry
@@ -15,6 +16,12 @@ class MemoryModel:
         self.adapter = AnthropicModelAdapter(runtime, ToolRegistry([]))
         self.max_calls = max_calls
         self.calls: list[dict] = []
+        # DeepSeek enables lengthy reasoning by default. This small, bounded
+        # extraction task needs JSON output, not the coding agent's reasoning budget.
+        # Other providers retain their defaults until their capabilities are known.
+        setting = runtime.get("memory", {}).get("extractionThinking", "disabled")
+        self.disable_thinking = (urlparse(runtime.get("baseUrl", "")).hostname == "api.deepseek.com"
+                                 and setting == "disabled")
 
     def complete(self, system: str, payload: dict, *, max_tokens: int = 1600) -> str:
         if len(self.calls) >= self.max_calls:
@@ -23,11 +30,14 @@ class MemoryModel:
         self.calls.append(entry)
         start = time.monotonic()
         try:
-            data = self.adapter._request({
+            body = {
                 "model": self.adapter.runtime["model"], "system": system,
                 "messages": [{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
                 "max_tokens": max_tokens,
-            })
+            }
+            if self.disable_thinking:
+                body["thinking"] = {"type": "disabled"}
+            data = self.adapter._request(body)
             entry["usage"] = data.get("usage", {})
             entry["stop_reason"] = data.get("stop_reason")
             entry["block_types"] = [b.get("type") for b in data.get("content", [])]

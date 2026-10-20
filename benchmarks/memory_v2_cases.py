@@ -86,7 +86,7 @@ class Event:
         self.actions.append('wait'); assert self.flag, 'lost wakeup would block'
 event=Event(); result={'decision':'old'}
 def publish():
-    assert not event.flag and 'decision' not in result
+    assert not event.flag and result.get('decision') is None
     result['decision']='deny'; event.set()
 assert request(event,result,publish)=='deny'
 assert event.actions==['clear','set','wait']

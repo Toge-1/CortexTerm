@@ -178,14 +178,17 @@ def evaluate(case, output, runtime):
         for mode in modes:
             source.write_text(original, encoding="utf-8")
             tools = registry(root, case)
-            adapter = MeasuredAdapter(runtime, tools, {"remaining": 8})
+            adapter = MeasuredAdapter(runtime, tools, {"remaining": 16})
             context = "" if mode == "none" else memory.context(case["task"], mode=mode)
             events = []
             started = time.monotonic()
             messages = run_agent_turn(
-                model=adapter, tools=tools, cwd=str(root), max_steps=8,
+                model=adapter, tools=tools, cwd=str(root), max_steps=16,
                 messages=[{"role": "system", "content": SYSTEM + "\n" + context},
-                          {"role": "user", "content": case["task"]}],
+                          {"role": "user", "content": case["task"] + "\nAvailable Python files:\n" +
+                           "\n".join(str(p.relative_to(root)).replace("\\", "/") for p in root.rglob("*.py")
+                                     if "__pycache__" not in p.parts)}],
+                on_tool_start=lambda name, data: events.append({"tool": name, "input": data}),
                 on_tool_result=lambda name, text, error: events.append(
                     {"tool": name, "output": text, "error": error}),
             )
@@ -219,10 +222,11 @@ def main():
         parser.error("Use a new output directory")
     args.output.mkdir(parents=True)
     os.environ["CORTEXTERM_MAX_RETRIES"] = "0"
-    runtime = {**load_runtime_config(), "maxOutputTokens": 2400, "requestTimeoutSeconds": 45}
+    runtime = {**load_runtime_config(), "maxOutputTokens": 4000, "requestTimeoutSeconds": 60}
     manifest = {"kind": "real_repository_regression_replay", "model": runtime["model"],
                 "source_commit": git("rev-parse", "HEAD").decode().strip(),
-                "cases": CASES, "repeats": 1, "max_steps": 8,
+                "cases": CASES, "repeats": 1, "max_steps": 16, "max_output_tokens": 4000,
+                "protocol_revision": "v2: list files and allow enough steps to reach edits after reading",
                 "limitations": ["Two tasks, one attempt per mode", "Constructed historical notes",
                                 "No new repository/generalization evidence", "Limited read/edit/test tools"]}
     (args.output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")

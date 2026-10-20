@@ -32,6 +32,8 @@ cortexterm --memory off
 
 `hybrid` 可以使用之前提取好的经验而关闭 `autoExtract`。`graph` 是实验开关，不能因为图看起来复杂就认定有用。检索预算是现有估算器的 token 估计，不是服务端精确分词值。
 
+对 `api.deepseek.com` 的后台提取请求，默认显式关闭 thinking，防止有限输出预算全部消耗在思考而没有 JSON；主编码 Agent 不受影响。可用 `memory.extractionThinking: "provider-default"` 恢复提供方默认值，其他提供方保持原设置。依据是 [DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode/) 与 [Anthropic 兼容接口](https://api-docs.deepseek.com/guides/anthropic_api/)；本项目还做了真实请求复测。
+
 ## 实际运行的链路
 
 1. **每轮公开事件留档。** `run_agent_turn()` 包装器创建 TurnRecorder。模型的公开回复、工具调用、工具结果获得稳定事件 ID。压缩换掉上下文列表后，记录器仍继续记录新增事件；不记录隐藏思考块或反复注入的系统提示词。

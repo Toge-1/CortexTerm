@@ -320,3 +320,19 @@ def test_memory_slash_command_reports_running_service(memory):
     assert "Memory V2 / hybrid" in text
     assert "'pending': 1" in text
     assert "Automatic extraction: off" in text
+
+
+def test_extractor_reasoning_setting_is_provider_scoped():
+    from cortexterm.memory_v2.model import MemoryModel
+    for host, expected in [("https://api.deepseek.com/anthropic", True),
+                           ("https://api.anthropic.com", False)]:
+        model = MemoryModel({"model": "test", "baseUrl": host})
+        requests = []
+        def request(body):
+            requests.append(body)
+            return {"content": [{"type": "text", "text": '{"memories": []}'}]}
+        model.adapter._request = request
+        assert model.extract({"events": []}, []) == {"memories": []}
+        assert ("thinking" in requests[0]) is expected
+        if expected:
+            assert requests[0]["thinking"] == {"type": "disabled"}
