@@ -13,6 +13,7 @@ from typing import Any, Callable
 from cortexterm.cost_tracker import CostTracker
 from cortexterm.permissions import PermissionManager
 from cortexterm.session import AutosaveManager, SessionData
+from cortexterm.session_lock import SessionLock
 from cortexterm.state import AppState, Store
 from cortexterm.tooling import ToolRegistry
 from cortexterm.tui.types import TranscriptEntry
@@ -79,6 +80,7 @@ class ScreenState:
     pending_approval: PendingApproval | None = None
     is_busy: bool = False
     session: SessionData | None = None
+    session_lock: SessionLock | None = None
     autosave: AutosaveManager | None = None
     app_state: Store[AppState] | None = None
     cost_tracker: CostTracker | None = None

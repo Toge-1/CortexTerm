@@ -14,6 +14,7 @@ from cortexterm.tools.edit_file import edit_file_tool
 from cortexterm.tools.file_tree import file_tree_tool
 from cortexterm.tools.git import git_tool
 from cortexterm.tools.governance_audit_tool import governance_audit_tool
+from cortexterm.tools.history import history_read_tool, history_search_tool
 from cortexterm.tools.grep_files import grep_files_tool
 from cortexterm.tools.list_files import list_files_tool
 from cortexterm.tools.load_skill import create_load_skill_tool
@@ -40,6 +41,8 @@ def create_default_tool_registry(cwd: str, runtime: dict | None = None) -> ToolR
             # User interaction
             ask_user_tool,
             remember_tool,
+            history_search_tool,
+            history_read_tool,
             # File operations
             list_files_tool,
             grep_files_tool,

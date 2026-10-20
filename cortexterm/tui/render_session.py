@@ -120,6 +120,8 @@ def get_max_transcript_scroll_offset(args: TtyAppArgs, state: ScreenState) -> in
     return get_transcript_max_scroll_offset(
         state.transcript,
         get_transcript_body_lines(args, state),
+        get_transcript_panel_width(),
+        active_entry_id=state.focused_entry_id,
     )
 
 

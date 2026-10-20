@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 from pathlib import Path
 from typing import Any
 from cortexterm.tooling import ToolDefinition, ToolResult
+from cortexterm.workspace import resolve_tool_path
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +24,7 @@ def _get_symbol_type(node: ast.AST) -> str | None:
     return None
 
 
-def _extract_symbols_from_file(file_path: Path) -> list[dict[str, Any]]:
+def _extract_symbols_from_file(file_path: Path, *, strict: bool = False) -> list[dict[str, Any]]:
     """Extract all symbols from a Python file using AST."""
     if not file_path.exists():
         return []
@@ -31,9 +33,12 @@ def _extract_symbols_from_file(file_path: Path) -> list[dict[str, Any]]:
         content = file_path.read_text(encoding="utf-8")
         tree = ast.parse(content, filename=str(file_path))
     except (SyntaxError, UnicodeDecodeError):
+        if strict:
+            raise
         return []
 
     symbols = []
+    parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
 
     for node in ast.walk(tree):
         symbol_type = _get_symbol_type(node)
@@ -44,8 +49,17 @@ def _extract_symbols_from_file(file_path: Path) -> list[dict[str, Any]]:
         if not name:
             continue
 
-        # Get line number
+        # Inclusive read boundaries include decorators, not just the def/class line.
         lineno = getattr(node, "lineno", 0)
+        start_line = min([lineno] + [dec.lineno for dec in getattr(node, "decorator_list", [])])
+        end_line = getattr(node, "end_lineno", None) or lineno
+        scope = []
+        parent = parents.get(node)
+        while parent is not None:
+            if isinstance(parent, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                scope.append(parent.name)
+            parent = parents.get(parent)
+        qualified_name = ".".join([*reversed(scope), name])
 
         # Get docstring if exists
         docstring = ast.get_docstring(node)
@@ -84,7 +98,10 @@ def _extract_symbols_from_file(file_path: Path) -> list[dict[str, Any]]:
         symbols.append({
             "type": symbol_type,
             "name": name,
+            "qualified_name": qualified_name,
             "line": lineno,
+            "start_line": start_line,
+            "end_line": end_line,
             "docstring": docstring_preview,
             "args": args if symbol_type == "function" else [],
             "decorators": decorators,
@@ -134,19 +151,32 @@ def _find_symbol_references(file_path: Path, symbol_name: str) -> list[dict[str,
 
 def _validate_find_symbols(input_data: dict) -> dict:
     path = input_data.get("path", ".")
+    if not isinstance(path, str) or not path.strip():
+        raise ValueError("path must be a non-empty string")
     symbol_type = input_data.get("symbol_type", "all")
     if symbol_type not in ("all", "class", "function", "variable"):
         raise ValueError(f"symbol_type must be one of: all, class, function, variable")
-    return {"path": path, "symbol_type": symbol_type}
+    parsed = {"path": path, "symbol_type": symbol_type}
+    if "line" in input_data:
+        line = input_data["line"]
+        if isinstance(line, bool) or not isinstance(line, int) or line < 1:
+            raise ValueError("line must be an integer >= 1")
+        if symbol_type == "variable":
+            raise ValueError("line lookup supports symbol_type all, class, or function")
+        parsed["line"] = line
+    return parsed
 
 
 def _run_find_symbols(input_data: dict, context) -> ToolResult:
-    """Find all symbols in Python files."""
-    search_path = Path(context.cwd) / input_data["path"]
+    """List Python symbols, or locate the innermost definition at a line."""
+    search_path = resolve_tool_path(context, input_data["path"], "search")
     symbol_type = input_data["symbol_type"]
+    target_line = input_data.get("line")
 
     if not search_path.exists():
         return ToolResult(ok=False, output=f"Path not found: {search_path}")
+    if target_line is not None and not search_path.is_file():
+        return ToolResult(ok=False, output="line lookup requires path to a single Python file, not a directory")
 
     # Find all Python files
     py_files = []
@@ -162,14 +192,47 @@ def _run_find_symbols(input_data: dict, context) -> ToolResult:
 
     all_symbols = []
     for py_file in py_files:
-        symbols = _extract_symbols_from_file(py_file)
+        # Check each file as well, since directory entries may be symlinks.
+        py_file = resolve_tool_path(context, str(py_file), "read")
+        try:
+            symbols = _extract_symbols_from_file(py_file, strict=search_path.is_file())
+        except (SyntaxError, UnicodeDecodeError) as error:
+            return ToolResult(ok=False, output=f"Cannot parse {input_data['path']}: {error}")
+        try:
+            display_path = py_file.relative_to(Path(context.cwd).resolve()).as_posix()
+        except ValueError:
+            display_path = str(py_file)  # Explicitly permitted paths outside the workspace.
         for sym in symbols:
-            sym["file"] = str(py_file.relative_to(context.cwd))
+            sym["file"] = display_path
             all_symbols.append(sym)
 
     # Filter by type
     if symbol_type != "all":
         all_symbols = [s for s in all_symbols if s["type"] == symbol_type]
+
+    if target_line is not None:
+        enclosing = [s for s in all_symbols if s["start_line"] <= target_line <= s["end_line"]]
+        if not enclosing:
+            return ToolResult(
+                ok=True,
+                output=f"No enclosing {symbol_type if symbol_type != 'all' else 'function or class'} "
+                       f"at line {target_line} in {input_data['path']}. "
+                       "The line may be at module level, between definitions, or outside the file; "
+                       "use read_file to inspect it directly.",
+            )
+        sym = min(enclosing, key=lambda s: (s["end_line"] - s["start_line"], -s["start_line"]))
+        read_args = {"path": sym["file"], "start_line": sym["start_line"], "end_line": sym["end_line"]}
+        return ToolResult(ok=True, output="\n".join([
+            f"Innermost {sym['type']} containing line {target_line}:",
+            f"FILE: {sym['file']}",
+            f"SYMBOL: {sym['qualified_name']}",
+            f"DEFINITION_LINE: {sym['line']}",
+            f"START_LINE: {sym['start_line']}",
+            f"END_LINE: {sym['end_line']}",
+            "Range is 1-based and inclusive, including decorators.",
+            f"read_file arguments: {json.dumps(read_args, ensure_ascii=False)}",
+            "If read_file reports TRUNCATED, follow its continuation up to END_LINE.",
+        ]))
 
     if not all_symbols:
         return ToolResult(
@@ -196,7 +259,9 @@ def _run_find_symbols(input_data: dict, context) -> ToolResult:
             elif sym["type"] == "class" and sym["bases"]:
                 extra = f"({', '.join(sym['bases'])})"
 
-            lines.append(f"  {icon} [{type_label}] {sym['name']}{extra} (line {sym['line']})")
+            lines.append(f"  {icon} [{type_label}] {sym['qualified_name']}{extra} "
+                         f"(start_line={sym['start_line']}, end_line={sym['end_line']}; "
+                         f"definition_line={sym['line']})")
             if sym["docstring"]:
                 lines.append(f"      💬 {sym['docstring']}")
         lines.append("")
@@ -327,12 +392,17 @@ def _run_get_ast_info(input_data: dict, context) -> ToolResult:
 
 find_symbols_tool = ToolDefinition(
     name="find_symbols",
-    description="Find all Python symbols (classes, functions, variables) in files or directories. Use this to understand code structure before making changes.",
+    description=("List Python classes/functions with qualified names and 1-based inclusive start_line/end_line "
+                 "ranges (including decorators). After grep_files identifies a file and line, pass path and line "
+                 "to return only the innermost matching function/class and its read_file arguments. "
+                 "Without line, list symbols in a file or directory. Read the returned range to inspect the implementation; "
+                 "if read_file truncates it, continue to end_line."),
     input_schema={
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "File or directory path to search (default: current directory)"},
             "symbol_type": {"type": "string", "enum": ["all", "class", "function", "variable"], "description": "Filter by symbol type (default: all)"},
+            "line": {"type": "integer", "minimum": 1, "description": "Optional 1-based hit line from grep_files. Requires a single file path; returns the innermost enclosing function/class matching symbol_type, not all symbols."},
         },
     },
     validator=_validate_find_symbols,

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from bisect import bisect_right
+from dataclasses import dataclass, field
+
 from .chrome import (
     _cached_terminal_size,
     RESET, DIM, BOLD,
@@ -264,8 +267,51 @@ def _get_entry_line_count(entry: TranscriptEntry) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Windowed transcript rendering — O(visible)
+# Windowed rendering: validate history, materialize only visible entries
 # ---------------------------------------------------------------------------
+
+@dataclass
+class _TranscriptLayout:
+    width: int = 0
+    states: list[tuple] = field(default_factory=list)
+    heights: list[int] = field(default_factory=list)
+    starts: list[int] = field(default_factory=list)
+    ends: list[int] = field(default_factory=list)
+
+
+# Heights belong to the active transcript. Rendered text stays in the bounded
+# caches above; offscreen entries need no re-rendering just to locate a viewport.
+_layout_cache = _TranscriptLayout()
+
+
+def _get_layout(entries: list[TranscriptEntry], width: int, active_entry_id: int | None) -> _TranscriptLayout:
+    global _layout_cache
+    # render_screen takes a fresh list snapshot each frame. Compare individual
+    # entry identities and states below rather than invalidating on list identity.
+    if _layout_cache.width != width:
+        _layout_cache = _TranscriptLayout(width=width)
+    layout = _layout_cache
+    states, heights, starts, ends = [], [], [], []
+    position = 0
+    for i, entry in enumerate(entries):
+        active = entry.id == active_entry_id
+        state = (id(entry), _entry_render_state(entry, active))
+        if i < len(layout.states) and layout.states[i] == state:
+            height = layout.heights[i]
+        else:
+            height = len(_get_entry_screen_lines(entry, width, active=active))
+        if i:
+            position += _SEPARATOR_LINE_COUNT
+        starts.append(position)
+        position += height
+        ends.append(position)
+        states.append(state)
+        heights.append(height)
+    # Release removed messages and replaced body strings on every refresh.
+    layout.states, layout.heights = states, heights
+    layout.starts, layout.ends = starts, ends
+    return layout
+
 
 def _resolve_panel_width(width: int | None) -> int:
     if width is not None:
@@ -279,15 +325,9 @@ def _compute_total_lines(
     width: int | None = None,
     active_entry_id: int | None = None,
 ) -> int:
-    if not entries:
-        return 0
     panel_width = _resolve_panel_width(width)
-    total = 0
-    for i, entry in enumerate(entries):
-        if i > 0:
-            total += _SEPARATOR_LINE_COUNT
-        total += len(_get_entry_screen_lines(entry, panel_width, active=entry.id == active_entry_id))
-    return total
+    layout = _get_layout(entries, panel_width, active_entry_id)
+    return layout.ends[-1] if layout.ends else 0
 
 
 def _render_visible_window(
@@ -302,34 +342,31 @@ def _render_visible_window(
 
     panel_width = _resolve_panel_width(width)
     result: list[str] = []
-    current_line = 0
-
-    for i, entry in enumerate(entries):
+    layout = _get_layout(entries, panel_width, active_entry_id)
+    for i in range(bisect_right(layout.ends, start_line), len(entries)):
+        entry = entries[i]
         if i > 0:
-            sep_start = current_line
-            sep_end = current_line + _SEPARATOR_LINE_COUNT
+            sep_end = layout.starts[i]
+            sep_start = sep_end - _SEPARATOR_LINE_COUNT
             if sep_start < end_line and sep_end > start_line:
                 vis_start = max(0, start_line - sep_start)
                 vis_end = min(_SEPARATOR_LINE_COUNT, end_line - sep_start)
                 result.extend(_SEPARATOR_LINES[vis_start:vis_end])
-            current_line = sep_end
-            if current_line >= end_line:
+            if sep_end >= end_line:
                 break
 
-        lines = _get_entry_screen_lines(entry, panel_width, active=entry.id == active_entry_id)
-        entry_line_count = len(lines)
-        entry_start = current_line
-        entry_end = current_line + entry_line_count
+        entry_start, entry_end = layout.starts[i], layout.ends[i]
+        entry_line_count = layout.heights[i]
 
         if entry_start < end_line and entry_end > start_line:
+            lines = _get_entry_screen_lines(entry, panel_width, active=entry.id == active_entry_id)
             vis_start = max(0, start_line - entry_start)
             vis_end = min(entry_line_count, end_line - entry_start)
             if vis_start > 0 and lines:
                 result.append(lines[0])
             result.extend(lines[vis_start:vis_end])
 
-        current_line = entry_end
-        if current_line >= end_line:
+        if entry_end >= end_line:
             break
 
     return result
@@ -354,32 +391,31 @@ def _visible_entry_line_ranges(
 
     panel_width = _resolve_panel_width(width)
     result: list[tuple[int, int, int]] = []
-    current_line = 0
     rendered_row = 0
-
-    for i, entry in enumerate(entries):
+    layout = _get_layout(entries, panel_width, active_entry_id)
+    for i in range(bisect_right(layout.ends, start_line), len(entries)):
+        entry = entries[i]
         if i > 0:
-            sep_start = current_line
-            sep_end = current_line + _SEPARATOR_LINE_COUNT
+            sep_end = layout.starts[i]
+            sep_start = sep_end - _SEPARATOR_LINE_COUNT
             if sep_start < end_line and sep_end > start_line:
                 rendered_row += min(_SEPARATOR_LINE_COUNT, end_line - sep_start) - max(0, start_line - sep_start)
-            current_line = sep_end
-            if current_line >= end_line:
+            if sep_end >= end_line:
                 break
 
-        entry_line_count = len(_get_entry_screen_lines(entry, panel_width, active=entry.id == active_entry_id))
-        entry_start = current_line
-        entry_end = current_line + entry_line_count
+        entry_line_count = layout.heights[i]
+        entry_start, entry_end = layout.starts[i], layout.ends[i]
 
         if entry_start < end_line and entry_end > start_line:
             vis_start = max(0, start_line - entry_start)
             vis_end = min(entry_line_count, end_line - entry_start)
             start_row = rendered_row
+            if vis_start > 0:
+                rendered_row += 1
             rendered_row += vis_end - vis_start
             result.append((entry.id, start_row, rendered_row))
 
-        current_line = entry_end
-        if current_line >= end_line:
+        if entry_end >= end_line:
             break
 
     return result
@@ -433,9 +469,10 @@ def render_transcript(
     width: int | None = None,
     active_entry_id: int | None = None,
 ) -> str:
-    """Render a windowed view of the transcript. O(visible)."""
+    """Validate layout in O(history), then render only visible entries."""
     t = theme()
     if not entries:
+        _get_layout(entries, _resolve_panel_width(width), active_entry_id)
         return ""
 
     panel_width = _resolve_panel_width(width)

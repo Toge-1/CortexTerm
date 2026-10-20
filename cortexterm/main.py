@@ -351,6 +351,14 @@ def main() -> None:
                         after = int(payload.get("after_tokens") or 0)
                         usage = float(payload.get("usage_percentage") or 0)
                         body = f"Context compaction complete. {before:,} -> {after:,} tokens; now {usage:.0f}%."
+                    elif event == "compact_retry":
+                        attempt = int(payload.get("attempt") or 1)
+                        maximum = int(payload.get("max_attempts") or 3)
+                        body = f"Context compaction attempt {attempt}/{maximum} failed; retrying. {payload.get('error', '')}"
+                    elif event == "compact_failed":
+                        body = f"Context compaction failed. {payload.get('error', '')}"
+                    elif event == "context_blocked":
+                        body = f"Next model request was not sent. {payload.get('error', '')}"
                     else:
                         body = f"Context event: {event}"
                     _append_transcript(transcript, kind="progress", body=body)

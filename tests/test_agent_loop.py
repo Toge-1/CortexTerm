@@ -214,7 +214,7 @@ def test_agent_turn_compacts_after_tool_result_before_next_model_call() -> None:
     )
     ctx = ContextManager(
         model="default",
-        context_window=300,
+        context_window=350,
         reserve_tokens=80,
         keep_recent_tokens=80,
     )
@@ -251,7 +251,7 @@ def test_failed_compaction_preserves_original_context() -> None:
 
     class FailingSummaryModel(ScriptedModel):
         def summarize(self, prompt: str, *, max_tokens: int) -> str:
-            del prompt, max_tokens
+            self.summary_prompts.append(prompt)
             raise RuntimeError("summary unavailable")
 
         def next(self, messages: list[ChatMessage]) -> AgentStep:
@@ -274,9 +274,12 @@ def test_failed_compaction_preserves_original_context() -> None:
         on_context_event=lambda event, _payload: events.append(event),
     )
 
-    assert seen == original
-    assert events == ["compact_start", "compact_failed"]
+    assert seen == []  # Never submit the still-oversized context to the model.
+    assert len(model.summary_prompts) == 3
+    assert events == ["compact_start", "compact_retry", "compact_retry", "compact_failed", "context_blocked"]
     assert result[: len(original)] == original
+    assert "Turn paused" in result[-1]["content"]
+    assert ctx.compaction_history == []
 
 
 def test_agent_turn_retries_empty_response_then_continues() -> None:

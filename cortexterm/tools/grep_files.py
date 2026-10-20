@@ -29,7 +29,7 @@ def _run(input_data: dict, context) -> ToolResult:
     MAX_FILES = 5000
 
     try:
-        all_files = sorted(root.rglob("*"))
+        all_files = [root] if root.is_file() else sorted(root.rglob("*"))
     except PermissionError:
         return ToolResult(ok=False, output=f"Permission denied: {root}")
     except OSError as e:

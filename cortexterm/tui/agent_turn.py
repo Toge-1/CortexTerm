@@ -172,6 +172,24 @@ def _append_context_event(
         push_transcript_entry(state, kind="progress", body="; ".join(parts) + ".")
         return
 
+    if event == "compact_retry":
+        attempt = int(payload.get("attempt") or 1)
+        maximum = int(payload.get("max_attempts") or 3)
+        state.status = f"Retrying context compression ({attempt + 1}/{maximum})..."
+        push_transcript_entry(
+            state, kind="progress",
+            body=f"Context compaction attempt {attempt}/{maximum} failed; retrying. {payload.get('error', '')}",
+        )
+        return
+
+    if event == "context_blocked":
+        state.status = "Turn paused: context budget exceeded."
+        push_transcript_entry(
+            state, kind="progress",
+            body=f"Next model request was not sent. {payload.get('error', '')}",
+        )
+        return
+
     if event == "compact_failed":
         state.status = "Context compression failed."
         error = str(payload.get("error") or "unknown error")

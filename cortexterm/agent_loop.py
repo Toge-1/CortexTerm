@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from cortexterm.context_manager import ContextManager, estimate_message_tokens
+from cortexterm.context_manager import CompactionBoundaryError, ContextManager, estimate_message_tokens
+from cortexterm.conversation_history import get_archived_messages
 from cortexterm.logging_config import get_logger
 from cortexterm.permissions import PermissionManager
 from cortexterm.tooling import ToolContext, ToolRegistry
 from cortexterm.types import AgentStep, ChatMessage, ModelAdapter
 
 logger = get_logger("agent_loop")
+
+MAX_COMPACTION_ATTEMPTS = 3
 
 # 常量：避免重复的提示文本
 NUDGE_CONTINUE = (
@@ -100,12 +103,11 @@ def run_agent_turn(
     recoverable_thinking_retry_count = 0
     tool_error_count = 0
     step = 0
-    compaction_failed_this_turn = False
-
-    def _compact_if_needed() -> None:
-        nonlocal current_messages, compaction_failed_this_turn
-        if context_manager is None or compaction_failed_this_turn:
-            return
+    def _compact_if_needed() -> str | None:
+        """Return a pause reason when the estimated request budget is unsafe."""
+        nonlocal current_messages
+        if context_manager is None:
+            return None
         context_manager.messages = current_messages
         stats = context_manager.get_stats()
         logger.info(
@@ -114,8 +116,13 @@ def run_agent_turn(
             stats.usage_percentage,
             stats.messages_count,
         )
-        if not context_manager.should_auto_compact():
-            return
+        budget = context_manager.input_token_budget
+        if stats.total_tokens <= budget and not stats.should_compact:
+            return None
+        if budget <= 0:
+            return "reserveTokens leaves no input budget; check the context window and reserve setting."
+        if not context_manager.enabled:
+            return f"Automatic compaction is disabled ({stats.total_tokens:,} estimated tokens; budget {budget:,})."
 
         logger.warning(
             "Context near limit, auto-compacting with %s strategy...",
@@ -130,20 +137,36 @@ def run_agent_turn(
         }
         if on_context_event:
             on_context_event("compact_start", start_payload)
-        try:
-            max_summary_tokens = max(1, int(context_manager.reserve_tokens * 0.8))
-            current_messages = context_manager.compact_messages(
-                lambda prompt: model.summarize(prompt, max_tokens=max_summary_tokens)
-            )
-        except Exception as error:  # keep the intact context for a later retry
-            compaction_failed_this_turn = True
-            logger.error("Context compaction failed: %s", error)
-            if on_context_event:
-                on_context_event(
-                    "compact_failed",
-                    {**start_payload, "error": str(error)},
+        for attempt in range(1, MAX_COMPACTION_ATTEMPTS + 1):
+            history_length = len(context_manager.compaction_history)
+            try:
+                max_summary_tokens = max(1, int(context_manager.reserve_tokens * 0.8))
+                candidate = context_manager.compact_messages(
+                    lambda prompt: model.summarize(prompt, max_tokens=max_summary_tokens)
                 )
-            return
+                after_stats = context_manager.get_stats()
+                if after_stats.total_tokens > budget:
+                    raise RuntimeError(
+                        f"Context remains above the input budget "
+                        f"({after_stats.total_tokens:,} > {budget:,} estimated tokens)."
+                    )
+                current_messages = candidate
+                break
+            except Exception as error:
+                # Pi commits only validated checkpoints. Restore the original
+                # list as well for legacy/custom compaction implementations.
+                context_manager.messages = current_messages
+                del context_manager.compaction_history[history_length:]
+                logger.warning("Context compaction attempt %d failed: %s", attempt, error)
+                retry = attempt < MAX_COMPACTION_ATTEMPTS and not isinstance(error, CompactionBoundaryError)
+                if on_context_event:
+                    on_context_event(
+                        "compact_retry" if retry else "compact_failed",
+                        {**start_payload, "error": str(error), "attempt": attempt,
+                         "max_attempts": MAX_COMPACTION_ATTEMPTS},
+                    )
+                if not retry:
+                    return f"Context compaction failed after {attempt} attempt(s): {error}"
 
         after_stats = context_manager.get_stats()
         payload: dict[str, Any] = {
@@ -162,10 +185,23 @@ def run_agent_turn(
             on_context_event("compact_done", payload)
         elif on_progress_message:
             on_progress_message(str(payload["summary"]))
+        return None
 
     while max_steps is None or step < max_steps:
         # This also runs after tool results are appended, before the next model call.
-        _compact_if_needed()
+        pause_reason = _compact_if_needed()
+        if pause_reason is not None:
+            fallback = (
+                f"Turn paused before the next model request. {pause_reason} "
+                "The original conversation was preserved; no fallback deletion was used. "
+                "Check /context and the summary service or compaction settings, then retry."
+            )
+            if on_context_event:
+                on_context_event("context_blocked", {"error": pause_reason})
+            if on_assistant_message:
+                on_assistant_message(fallback)
+            current_messages.append({"role": "assistant", "content": fallback})
+            return current_messages
         step += 1
         next_step: AgentStep
         try:
@@ -327,7 +363,11 @@ def run_agent_turn(
             result = tools.execute(
                 call["toolName"],
                 call["input"],
-                ToolContext(cwd=cwd, permissions=permissions),
+                ToolContext(
+                    cwd=cwd,
+                    permissions=permissions,
+                    archived_messages=get_archived_messages(current_messages),
+                ),
             )
             if on_tool_result:
                 on_tool_result(call["toolName"], result.output, not result.ok)

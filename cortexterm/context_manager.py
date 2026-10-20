@@ -301,6 +301,10 @@ class CompactionPreparation:
     is_split_turn: bool
 
 
+class CompactionBoundaryError(RuntimeError):
+    """No removable history exists without breaking the retained conversation."""
+
+
 def prepare_pi_compaction(
     messages: list[dict[str, Any]],
     keep_recent_tokens: int,
@@ -476,6 +480,17 @@ class ContextManager:
         """Check if auto-compaction should trigger."""
         stats = self.get_stats()
         return stats.should_compact
+
+    @property
+    def input_token_budget(self) -> int:
+        """Estimated message budget, not an exact provider token count.
+
+        Pi reserves the configured response headroom. Legacy keeps its existing
+        95% trigger/headroom instead of adopting Pi's reserve setting.
+        """
+        if self.strategy == "legacy":
+            return int(self.context_window * AUTOCOMPACT_THRESHOLD)
+        return max(0, self.context_window - self.reserve_tokens)
     
     def compact_messages(
         self,
@@ -499,11 +514,17 @@ class ContextManager:
     ) -> list[dict[str, Any]]:
         preparation = prepare_pi_compaction(self.messages, self.keep_recent_tokens)
         if preparation is None:
-            raise RuntimeError("No safe Pi-style compaction boundary was found")
+            raise CompactionBoundaryError("No safe Pi-style compaction boundary was found")
+
+        def checked_summary(prompt: str) -> str:
+            text = summarizer(prompt)
+            if not isinstance(text, str) or not text.strip():
+                raise RuntimeError("Compaction summary was empty")
+            return text.strip()
 
         history_summary = preparation.previous_summary or "No prior history."
         if preparation.messages_to_summarize:
-            history_summary = summarizer(
+            history_summary = checked_summary(
                 _summary_prompt(
                     preparation.messages_to_summarize,
                     previous_summary=preparation.previous_summary,
@@ -512,7 +533,7 @@ class ContextManager:
 
         summary = history_summary
         if preparation.turn_prefix_messages:
-            turn_summary = summarizer(
+            turn_summary = checked_summary(
                 _summary_prompt(preparation.turn_prefix_messages, turn_prefix=True)
             )
             summary = f"{history_summary}\n\n---\n\n**Turn Context (split turn):**\n\n{turn_summary}"
@@ -538,6 +559,14 @@ class ContextManager:
             + preparation.kept_messages
         )
         after_tokens = estimate_messages_tokens(compacted)
+        # Commit only a useful checkpoint. Failure leaves both messages and
+        # compaction history untouched, including any previously archived text.
+        if after_tokens >= stats.total_tokens or after_tokens > self.input_token_budget:
+            raise RuntimeError(
+                f"Compacted context still exceeds the input budget or did not shrink "
+                f"({stats.total_tokens} -> {after_tokens} estimated tokens; "
+                f"budget {self.input_token_budget}). Reduce keepRecentTokens or summary size."
+            )
         self.compaction_history.append(
             {
                 "timestamp": time.time(),

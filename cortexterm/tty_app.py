@@ -221,6 +221,19 @@ def run_tty_app(
     if state is None:
         return messages
 
+    try:
+        return _run_tty_session(args, state)
+    finally:
+        # Covers terminal setup, event-loop errors, and final-save failures.
+        # Keep ownership through final save, never merely around each write.
+        if state.session_lock is not None:
+            state.session_lock.release()
+
+
+def _run_tty_session(args: TtyAppArgs, state: ScreenState) -> list[ChatMessage]:
+    permissions = args.permissions
+    tools = args.tools
+
     # Wire up permission prompt handler
     approval_event = threading.Event()
     approval_result: dict[str, Any] = {}

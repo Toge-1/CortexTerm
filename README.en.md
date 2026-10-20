@@ -90,23 +90,25 @@ cortexterm
 
 - **Terminal UI:** alternate-screen TUI, panel rendering, scrolling, and collapsible tool cards.
 - **Agent tool loop:** the model can call tools, consume their results, and continue until it produces a final response.
-- **Context management:** uses Pi-style structured summaries by default, retains a recent token budget and valid tool-call relationships, and preserves archived messages for audit. The original deletion strategy remains configurable; see [context compaction](docs/context-compaction.md).
+- **Context management:** uses Pi-style structured summaries by default, retains recent messages and valid tool-call relationships, retries failed compaction, and pauses requests that still exceed the estimated budget. Archived originals can be searched and read on demand. The original deletion strategy remains configurable; see [context compaction](docs/context-compaction.md).
 - **Long-term memory:** stores preferences, conventions, architecture, commands, environment facts, and decisions by scope.
-- **Session persistence:** saves and restores conversations with autosave support.
+- **Session persistence:** saves and restores conversations with autosave support; process-level ownership prevents multiple instances from resuming and overwriting the same session. See [session ownership](docs/session-ownership.md).
 - **Permission controls:** allows, denies, or asks before tools execute.
 - **MCP integration:** connects configured MCP servers and registers their capabilities as callable tools.
-- **29 built-in tools:** file operations, commands, code analysis, testing, Git, web access, and development utilities.
+- **31 built-in tools:** file operations, commands, code analysis, testing, Git, web access, conversation archives, and development utilities.
 
 ---
 
 ## 🛠️ Built-in Tools
 
-These 29 tools come from the default registry. Tools supplied by configured MCP servers are additional.
+These 31 tools come from the default registry. Tools supplied by configured MCP servers are additional.
 
 | Category | Tool | Purpose |
 |----------|------|---------|
 | Interaction and memory | `ask_user` | Ask the user a question during execution |
 | Interaction and memory | `remember` | Write long-term memory |
+| Conversation archive | `history_search` | Search compacted original messages in the current session and return IDs/snippets |
+| Conversation archive | `history_read` | Read archived text in bounded chunks with links to associated tool calls/results |
 | Files | `list_files` | List directory contents |
 | Files | `grep_files` | Search files with regular expressions |
 | Files | `read_file` | Read files by line range |
@@ -228,7 +230,7 @@ cortexterm
 |--------|-------|
 | Python package files | 89 |
 | Package lines of code | approximately 17,000 |
-| Fixed built-in tools | 29 |
+| Fixed built-in tools | 31 |
 | Third-party runtime dependencies | 0 |
 | Local test result | 217 passed, 3 skipped |
 

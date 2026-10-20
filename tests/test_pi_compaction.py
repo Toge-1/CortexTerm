@@ -143,6 +143,7 @@ def test_repeated_pi_compaction_updates_previous_summary() -> None:
         [
             {"role": "assistant", "content": "more " * 300},
             {"role": "user", "content": "latest"},
+            {"role": "assistant", "content": "recent progress " * 15},
         ]
     )
 
@@ -159,7 +160,7 @@ def test_repeated_pi_compaction_updates_previous_summary() -> None:
 
 def test_pi_compaction_tracks_file_operations_cumulatively() -> None:
     manager = ContextManager(
-        context_window=250,
+        context_window=300,
         reserve_tokens=80,
         keep_recent_tokens=20,
     )

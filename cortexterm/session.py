@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from cortexterm.config import CORTEXTERM_DIR
+from cortexterm.session_lock import SessionLock
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +92,11 @@ def _session_file(session_id: str) -> Path:
 def _session_index_file() -> Path:
     """Return path to the session index file."""
     return CORTEXTERM_DIR / "sessions_index.json"
+
+
+def acquire_session_lock(session_id: str) -> SessionLock:
+    """Claim a session before loading it for editing; release after final save."""
+    return SessionLock(_session_file(session_id)).acquire()
 
 
 def _content_to_text(content: Any) -> str:
@@ -287,8 +293,31 @@ def _atomic_write_text(path: Path, content: str) -> None:
     tmp.replace(path)
 
 
-def save_session(session: SessionData) -> bool:
-    """Persist a complete session to disk."""
+def save_session(session: SessionData, *, session_lock: SessionLock | None = None) -> bool:
+    """Persist a snapshot only while owning the session.
+
+    Interactive callers keep their lock from before load through final save.
+    Standalone saves take a short lock and cannot overwrite an active session.
+    """
+    owned_lock = None
+    try:
+        if not session.has_meaningful_content():
+            return False
+        if session_lock is None:
+            owned_lock = acquire_session_lock(session.session_id)
+            session_lock = owned_lock
+        if not session_lock.holds(_session_file(session.session_id)):
+            return False
+        return _save_session_snapshot(session)
+    except OSError:
+        return False
+    finally:
+        if owned_lock is not None:
+            owned_lock.release()
+
+
+def _save_session_snapshot(session: SessionData) -> bool:
+    """Write a snapshot while the caller holds its session lock."""
     try:
         if not session.has_meaningful_content():
             return False
@@ -379,7 +408,15 @@ def list_sessions() -> list[SessionMetadata]:
 
 
 def delete_session(session_id: str) -> bool:
-    """Delete a session from disk. Returns True if deleted."""
+    """Delete an idle session; active sessions are skipped, including cleanup."""
+    try:
+        with SessionLock(_session_file(session_id)):
+            return _delete_session_unlocked(session_id)
+    except OSError:
+        return False
+
+
+def _delete_session_unlocked(session_id: str) -> bool:
     session_path = _session_file(session_id)
     if not session_path.exists():
         return False
@@ -440,8 +477,12 @@ def get_latest_session(workspace: str | None = None) -> SessionData | None:
 class AutosaveManager:
     """Manages automatic session saving with rate limiting."""
 
-    def __init__(self, session: SessionData, interval: int = AUTOSAVE_INTERVAL_SECONDS):
+    def __init__(
+        self, session: SessionData, interval: int = AUTOSAVE_INTERVAL_SECONDS,
+        *, session_lock: SessionLock | None = None,
+    ):
         self.session = session
+        self.session_lock = session_lock
         self.interval = interval
         self._last_save_time = time.time()  # Initialize to current time
         self._dirty = False
@@ -460,7 +501,7 @@ class AutosaveManager:
     def save_if_needed(self) -> bool:
         """Save if dirty and interval elapsed. Returns True if saved."""
         if self.should_save():
-            if save_session(self.session):
+            if save_session(self.session, session_lock=self.session_lock):
                 self._last_save_time = time.time()
                 self._dirty = False
                 return True
@@ -469,7 +510,7 @@ class AutosaveManager:
 
     def force_save(self) -> bool:
         """Force immediate save regardless of interval."""
-        if save_session(self.session):
+        if save_session(self.session, session_lock=self.session_lock):
             self._last_save_time = time.time()
             self._dirty = False
             return True

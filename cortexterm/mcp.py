@@ -352,9 +352,17 @@ class StdioMcpClient:
                             break
 
                     if content_length > 0:
-                        body_bytes = self.process.stdout.read(content_length)
-                        if len(body_bytes) < content_length:
-                            return
+                        # Unbuffered pipes can return a short read while the
+                        # writer is still alive. Accumulate the complete frame.
+                        chunks: list[bytes] = []
+                        remaining = content_length
+                        while remaining:
+                            chunk = self.process.stdout.read(remaining)
+                            if not chunk:
+                                return
+                            chunks.append(chunk)
+                            remaining -= len(chunk)
+                        body_bytes = b"".join(chunks)
                         try:
                             self._handle_message(json.loads(body_bytes.decode("utf-8")))
                         except (json.JSONDecodeError, UnicodeDecodeError):
