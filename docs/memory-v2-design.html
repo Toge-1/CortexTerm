@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CortexTerm 记忆系统｜设计与执行流程</title>
+<style>
+:root{--ink:#172b35;--muted:#5c717b;--line:#dbe5e8;--paper:#fff;--bg:#f2f6f6;--teal:#086f69;--teal-bg:#eaf6f3;--blue:#315fc2;--blue-bg:#edf3ff;--amber:#986015;--amber-bg:#fff6e7;--rose:#a04351;--rose-bg:#fff0f2;--mono:Consolas,"Cascadia Code",monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.85 "Segoe UI","Microsoft YaHei",sans-serif}a{color:var(--teal);text-underline-offset:4px}button{font:inherit;cursor:pointer}p{margin:12px 0}strong{font-weight:650}code{font: .9em/1.6 var(--mono);background:#eef2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{overflow:auto;background:#132933;color:#e4f1f2;border-radius:12px;padding:20px 23px;font:13px/1.85 var(--mono);tab-size:4}pre code{background:none;color:inherit;padding:0;font:inherit}ul,ol{padding-left:24px}li{margin:7px 0}h1,h2,h3,h4{line-height:1.4;letter-spacing:-.025em}h1{font-size:44px;margin:16px 0}h2{font-size:28px;margin:0 0 18px}h3{font-size:20px;margin:30px 0 10px}h4{font-size:17px;margin:15px 0 8px}
+.layout{max-width:1530px;margin:auto;display:grid;grid-template-columns:258px minmax(0,1fr);gap:34px;padding:30px 30px 70px}
+aside{position:sticky;top:25px;align-self:start;height:calc(100vh - 50px);overflow:auto;padding:16px 10px 24px 0}.brand{font-size:19px;font-weight:750;letter-spacing:.02em}.brand small{display:block;font:11px/1.8 var(--mono);letter-spacing:.16em;color:var(--muted);margin:5px 0 24px}
+nav a{display:block;text-decoration:none;color:#516670;font-size:13px;padding:7px 12px;border-left:2px solid transparent;line-height:1.65}nav a:hover,nav a.active{color:var(--teal);background:#e4eeec;border-color:var(--teal);border-radius:0 6px 6px 0}nav .group{font-size:11px;letter-spacing:.1em;margin:20px 12px 7px;color:#73878f}.aside-note{font-size:12px;color:var(--muted);margin:24px 12px}
+main{min-width:0}.hero,section{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:40px 44px;margin-bottom:23px}.hero{padding-top:43px;background:linear-gradient(135deg,#fff 50%,#eaf5f1)}.eyebrow{color:var(--teal);font:12px/1.8 var(--mono);letter-spacing:.14em}.lead{font-size:19px;line-height:1.8;max-width:810px;color:#38535c}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.tag{font:12px/1.6 var(--mono);padding:5px 10px;background:#fff;border:1px solid #cbded8;border-radius:30px;color:#456760}.section-num{display:block;color:var(--teal);font:12px/1.5 var(--mono);letter-spacing:.14em;margin-bottom:9px}
+.callout{border-left:4px solid var(--teal);background:var(--teal-bg);padding:15px 19px;border-radius:0 10px 10px 0;margin:20px 0}.callout.warn{border-color:var(--amber);background:var(--amber-bg)}.callout.issue{border-color:var(--rose);background:var(--rose-bg)}.callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}.caption,.source,.small{font-size:13px;line-height:1.8;color:var(--muted)}.source{border-top:1px dashed var(--line);padding-top:12px;margin-top:22px}.source code{font-size:12px}.caption{margin:12px 0 0}.pill{display:inline-block;font-size:11px;font-weight:600;border-radius:5px;padding:1px 7px;background:var(--teal-bg);color:var(--teal)}.pill.optional{color:var(--amber);background:var(--amber-bg)}.pill.off{color:var(--rose);background:var(--rose-bg)}
+.grid2,.grid3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{min-width:0;padding:20px;border:1px solid var(--line);border-radius:12px;background:#fbfdfd}.card h3,.card h4{margin-top:0}.card p{font-size:14px}.card .big{font-size:23px;font-weight:700;color:var(--teal)}
+.table-wrap{overflow:auto;margin:18px 0;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.8;text-align:left}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#edf4f4;color:#36545e;font-size:13px}tr:last-child td{border-bottom:0}td:first-child{font-weight:600}table td code{font-size:12px}
+.diagram{margin:23px 0;padding:18px;background:#f8fbfc;border:1px solid var(--line);border-radius:12px;overflow:auto}.diagram svg{display:block;width:100%;height:auto;min-width:650px}.diagram text{font-family:"Segoe UI","Microsoft YaHei",sans-serif;fill:#203c48;font-size:15px}.diagram .sub{fill:#637984;font-size:12px}.diagram .strong{font-weight:700;font-size:16px}.diagram .label{font-size:12px;fill:#52717b}.diagram .node{fill:white;stroke:#b9cdd4;stroke-width:1.5}.diagram .accent{fill:#e9f6f1;stroke:#79b8a7}.diagram .model{fill:#edf2ff;stroke:#9eb4df}.diagram .warning{fill:#fff4e5;stroke:#d8bc8d}.diagram .danger{fill:#fff0f2;stroke:#d4a0aa}.diagram .edge{fill:none;stroke:#6a8792;stroke-width:1.6;marker-end:url(#arrow)}.diagram .optional-edge{stroke-dasharray:6 4}.diagram .lane{stroke:#c6d7dd;stroke-dasharray:5 5}
+details{border:1px solid var(--line);border-radius:9px;padding:13px 17px;margin:12px 0}summary{cursor:pointer;font-weight:600;font-size:14px}details p,details li{font-size:14px}.steps{counter-reset:item;list-style:none;padding:0}.steps>li{position:relative;padding:1px 0 12px 45px}.steps>li:before{counter-increment:item;content:counter(item);position:absolute;left:0;top:5px;width:29px;height:29px;line-height:29px;text-align:center;border-radius:50%;color:white;background:var(--teal);font:600 13px/29px var(--mono)}
+.mode-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.mode-buttons button,.print{border:1px solid #c9d9dd;background:white;color:#395a64;padding:8px 14px;border-radius:7px;font-size:13px}.mode-buttons button[aria-pressed=true]{background:var(--teal);color:white;border-color:var(--teal)}.mode-detail{background:#f1f8f6;border:1px solid #cee1da;border-radius:10px;padding:18px 20px}.mode-detail p{margin:5px 0;font-size:14px}.mode-detail .command{font-family:var(--mono);font-weight:650;font-size:14px}
+.flow-row{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin:20px 0}.flow-row .step{flex:1;min-width:135px;border:1px solid #bad5cb;background:#f0f8f4;border-radius:9px;padding:12px;font-size:13px}.flow-row .arrow{align-self:center;color:#74918f}.term{font-size:13px;color:var(--muted)}.checklist li{margin:12px 0}.foot{padding:10px 8px;color:var(--muted);font-size:12px}.print{margin:16px 12px 0}.mobile-title{display:none}
+@media(min-width:1500px){.layout{grid-template-columns:270px minmax(0,1fr);gap:46px}.hero,section{padding:44px 56px}}
+@media(max-width:1050px){.layout{grid-template-columns:190px minmax(0,1fr);gap:20px;padding:20px}.hero,section{padding:30px 28px}h1{font-size:36px}nav a{font-size:12px}}
+@media(max-width:760px){.layout{display:block;padding:12px}aside{position:static;height:auto;padding:5px 6px 18px}.brand small{margin-bottom:8px}nav{display:flex;flex-wrap:wrap;gap:4px}nav .group,.aside-note,.print{display:none}nav a{border:1px solid #d9e4e6;border-radius:5px;padding:4px 8px}nav a:hover,nav a.active{border-radius:5px}.hero,section{padding:26px 20px;border-radius:12px}.grid2,.grid3{grid-template-columns:1fr}h1{font-size:31px}h2{font-size:24px}.lead{font-size:17px}.diagram{padding:10px}.table-wrap table{min-width:600px}pre{font-size:12px}.meta{gap:5px}}
+@media print{html{scroll-behavior:auto}body{background:white;font-size:11pt}.layout{display:block;padding:0;max-width:none}aside,.mode-buttons,.print{display:none}.hero,section{border:0;border-radius:0;padding:16px 0;margin:0 0 18px;break-before:auto}h1{font-size:28pt}h2{font-size:20pt;break-after:avoid}h3,h4{break-after:avoid}.diagram,.card,pre,.callout,tr{break-inside:avoid}.diagram svg{min-width:0}.table-wrap{overflow:visible}table{font-size:9pt}pre{white-space:pre-wrap}a{color:inherit}.source{font-size:9pt}.hero{background:none}.caption{font-size:9pt}@page{size:A4;margin:16mm}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6a8792"/></marker></defs></svg>
+<div class="layout">
+<aside>
+<div class="brand">CortexTerm<small>MEMORY / DESIGN NOTES</small></div>
+<nav aria-label="文档目录">
+<div class="group">先建立整体理解</div>
+<a href="#overview">01 · 这套记忆究竟做什么</a>
+<a href="#switches">02 · 直接启动与调用预算</a>
+<a href="#walkthrough">03 · 用四轮对话走一遍</a>
+<div class="group">写入、整理、查询</div>
+<a href="#capture">04 · 哪些内容会被保存</a>
+<a href="#extraction">05 · 何时提取、怎样筛选</a>
+<a href="#correction">06 · 重复与冲突怎么处理</a>
+<a href="#search">07 · BM25 搜索的完整步骤</a>
+<a href="#readback">08 · 结果怎样回到模型</a>
+<div class="group">存储与可靠性</div>
+<a href="#storage">09 · 为什么选 SQLite</a>
+<a href="#lifecycle">10 · 后台任务、失败与恢复</a>
+<a href="#scope">11 · 范围、时间与隐私边界</a>
+<div class="group">使用、验证与源码</div>
+<a href="#operations">12 · 怎么启动、怎么观察</a>
+<a href="#limits">13 · 已实现与尚未解决</a>
+<a href="#evidence">14 · 实验究竟证明了什么</a>
+<a href="#sources">15 · 按调用链定位源码</a>
+</nav>
+<button class="print" type="button" onclick="window.print()">打印 / 另存为 PDF</button>
+<p class="aside-note">离线 HTML · 图表已内嵌<br>本文只说明功能，不会修改 CortexTerm 配置。</p>
+</aside>
+<main>
+<header class="hero">
+<div class="eyebrow">IMPLEMENTATION GUIDE · 2026-10-21</div>
+<h1>记忆系统，<br>从“保存”讲到“用起来”。</h1>
+<p class="lead">每个功能都回答五个问题：<strong>解决什么问题、什么时候触发、谁来执行、数据怎么变化、哪些情况还做不到。</strong></p>
+<div class="meta"><span class="tag">CortexTerm / Memory V2</span><span class="tag">单次 BM25 · 候选先提取</span><span class="tag">5 张流程图 + 完整示例</span><span class="tag">不依赖网络或图表库</span></div>
+<div class="callout"><strong>先记住这三个独立动作：</strong><br>留档＝把发生过的事存下来。提取＝从历史中挑可复用经验。检索＝有新问题时把相关旧信息找回来。<br><strong>存进硬盘，不等于变成长期经验；变成经验，也不等于已经发给模型。</strong></div>
+<p class="small">推荐读法：先读 01—03 建立整体过程；想弄清“什么时候写、什么时候调模型”读 04—05；想弄清检索算法读 07—08。后半部分提供存储、并发和验证细节。本文描述当前源码，不把计划中的能力写成已完成。</p>
+</header>
+
+<section id="overview">
+<span class="section-num">01 / PURPOSE &amp; MAP</span>
+<h2>这套记忆究竟解决什么问题？</h2>
+<p>你在一个会话里告诉 Agent：“Windows 下必须用 <code>py -m pytest</code>，直接运行 <code>pytest</code> 会选错解释器。”新开会话后，这句话不一定还在模型上下文中。Memory V2 要做的，是让 Agent 在需要时能找回这条约定及其来源。</p>
+<div class="grid3">
+<div class="card"><div class="big">过去发生了什么</div><p>保存用户问题、公开回复、工具调用和工具结果。即使没提炼出经验，仍然能查原文。</p><span class="pill">turns 历史表</span></div>
+<div class="card"><div class="big">哪些经验能复用</div><p>后台模型提炼结论、选择 scope 和原文片段；程序取得 quote、比较旧经验后写入。主 Agent 只查记忆，不再调用 remember。</p><span class="pill optional">memories 经验表</span></div>
+<div class="card"><div class="big">这次该用哪些</div><p>根据查询搜索历史或经验，返回少量片段。模型需要详细证据时再打开原记录。</p><span class="pill">memory_search / memory_read</span></div>
+</div>
+<figure class="diagram">
+<svg viewBox="0 0 980 410" role="img" aria-labelledby="overview-title overview-desc">
+<title id="overview-title">历史记录、经验提取、检索使用的总流程</title>
+<desc id="overview-desc">Agent 每轮结束保存公开事件到 turns。可选后台提取器读取 turns 并把经验存入 memories。未来模型调用 memory_search 查询两类记录，结果作为工具结果返回模型。后台提取默认启用并受调用预算限制；内容通过工具按需读取。</desc>
+<text x="24" y="24" class="label">写入：先留原文，再按开关决定是否整理</text>
+<rect class="node" x="24" y="48" width="195" height="83" rx="12"/><text x="121" y="81" text-anchor="middle" class="strong">Agent 一轮结束</text><text x="121" y="107" text-anchor="middle" class="sub">也包括异常结束的已收集内容</text>
+<path class="edge" d="M219 90 H275"/>
+<rect class="node accent" x="276" y="48" width="195" height="83" rx="12"/><text x="374" y="81" text-anchor="middle" class="strong">turns：原始历史</text><text x="374" y="107" text-anchor="middle" class="sub">原文 · 编号 · 时间 · 提取状态</text>
+<path class="edge optional-edge" d="M471 90 H527"/>
+<rect class="node model" x="528" y="48" width="195" height="83" rx="12"/><text x="626" y="81" text-anchor="middle" class="strong">后台模型提取</text><text x="626" y="107" text-anchor="middle" class="sub">可选 · 额外 API 请求</text>
+<path class="edge" d="M723 90 H767"/>
+<rect class="node accent" x="768" y="48" width="188" height="83" rx="12"/><text x="862" y="81" text-anchor="middle" class="strong">memories：经验</text><text x="862" y="107" text-anchor="middle" class="sub">陈述 + 关键词 + 证据</text>
+<text x="24" y="192" class="label">使用：当前模型决定何时调用工具，搜索结果再进入上下文</text>
+<rect class="node" x="24" y="231" width="195" height="83" rx="12"/><text x="121" y="264" text-anchor="middle" class="strong">未来的新问题</text><text x="121" y="290" text-anchor="middle" class="sub">例如：按之前约定跑测试</text>
+<path class="edge" d="M219 273 H275"/>
+<rect class="node model" x="276" y="231" width="195" height="83" rx="12"/><text x="374" y="264" text-anchor="middle" class="strong">主 Agent 选择查记忆</text><text x="374" y="290" text-anchor="middle" class="sub">生成 memory_search 调用</text>
+<path class="edge" d="M471 273 H527"/>
+<rect class="node" x="528" y="231" width="195" height="83" rx="12"/><text x="626" y="264" text-anchor="middle" class="strong">搜索 + 排序</text><text x="626" y="290" text-anchor="middle" class="sub">原文 / 经验 · 按模式选择</text>
+<path class="edge" d="M374 131 V170 H586 V230"/><path class="edge" d="M862 131 V170 H667 V230"/>
+<path class="edge" d="M723 273 H767"/>
+<rect class="node accent" x="768" y="231" width="188" height="83" rx="12"/><text x="862" y="264" text-anchor="middle" class="strong">返回 tool_result</text><text x="862" y="290" text-anchor="middle" class="sub">主 Agent 再判断如何使用</text>
+<text x="24" y="368" class="sub">后台提取统一写入；主 Agent 通过搜索、读取工具和后台处理状态了解记忆。</text>
+<text x="24" y="393" class="sub">只存盘不会改变模型权重；只有读出的内容进入请求上下文后，模型才看到它。</text>
+</svg>
+<figcaption class="caption">图 1 · 全局数据流。原文记录、经验提取、检索工具是三件可以分别运行的事。</figcaption>
+</figure>
+<h3>它和现有 Session、compaction 的区别</h3>
+<div class="table-wrap"><table><thead><tr><th>模块</th><th>回答的问题</th><th>主要作用</th></tr></thead><tbody>
+<tr><td>Session 保存 / 恢复</td><td>“我上次那个会话继续到哪里了？”</td><td>恢复会话消息、界面展示、输入历史等状态。</td></tr>
+<tr><td>Compaction</td><td>“当前发给模型的上下文放不下了怎么办？”</td><td>压缩当前工作上下文，保留近期消息。</td></tr>
+<tr><td>Memory V2</td><td>“以前的约定、失败经过或操作，哪里能找到？”</td><td>跨会话存储公开证据，提供按问题检索和可选经验提取。</td></tr>
+</tbody></table></div>
+<p>当前 V2 另外保存一份公开事件，并没有只在 Session 文件上建立索引，所以存在一定重复存储。旧 Session 不会自动全部导入；开启 V2 后才开始积累新历史。旧版显式记忆文件会做幂等导入，原文件保留。</p>
+</section>
+
+<section id="switches">
+<span class="section-num">02 / DEFAULT BEHAVIOR</span>
+<h2>直接启动，一套记忆功能。</h2>
+<pre><code>cortexterm</code></pre>
+<p>启动后保存每轮公开历史，后台提取可复用经验；模型需要时调用 memory_search / memory_read。话题查询统一 BM25，纯时间查询按时间分页。不需要选择记忆版本，不自动把旧记忆塞进每轮 system prompt。</p>
+<p>有模型配置且有预算时，后台会额外调用已配置的 API。提取与比较共用每进程默认 30 次调用预算；用完后保存待处理任务，下次继续。只需要调整费用时设置 memory.maxExtractionCalls；设为 0 暂停额外调用，留档和已有内容搜索仍可用。</p>
+<p>旧 JSON 记忆自动幂等导入，原文件保留；旧 mode、autoExtract、autoRecall、graph 字段不再选择运行策略。数据库故障会报告，不静默切换回旧版全量注入。</p>
+<p class="source">源码：<code>memory_v2/runtime.py::create_memory_manager</code>。</p>
+</section>
+
+<section id="walkthrough">
+<span class="section-num">03 / ONE EXAMPLE</span>
+<h2>先用四轮对话，把三种“记住”分开。</h2>
+<p>直接运行 <code>cortexterm</code>，后台整理默认启用，内容按需读取。下面的提取结果是<strong>说明性示例</strong>，不是模型必定输出的内容。</p>
+<ol class="steps">
+<li><strong>你说：“你好。”</strong><p>Agent 回复后，这一轮原文进入 <code>turns</code>。后台依然会领取它并发起提取请求。提示词要求没有可复用内容就返回空列表，因此预期不增加经验。<strong>原文被保存，经验可以是零条；提取调用已经发生。</strong></p></li>
+<li><strong>你说：“这个项目在 Windows 下测试用 py -m pytest。”</strong><p>原文照常保存。后台可能提取经验“本项目 Windows 测试使用 py -m pytest”，选择 project 范围和来源片段 ID；程序取该片段原文供比较，通过后保存 active 记录。</p></li>
+<li><strong>新会话里你说：“按之前约定跑一下测试。”</strong><p>主模型可以调用 <code>memory_search({"query":"Windows pytest 测试"})</code>。工具找到经验，返回内容和 ID；模型需要核实再调用 <code>memory_read</code>，然后决定调用 <code>run_command</code>。<strong>没有任何规则保证主模型每次都主动查记忆。</strong></p></li>
+<li><strong>你纠正：“同一个 Windows 项目现在改用 uv run pytest。”</strong><p>后台拿本轮历史与检索出的旧经验比较。如果旧记录被提供给模型，且新证据明确修正同一条件下的结论，模型可以返回旧 ID 的 <code>supersedes</code> 关系。程序校验后写新记录、使旧记录失效。<strong>如果旧记录没检索出来，就可能同时留下两条冲突经验。</strong></p></li>
+</ol>
+<div class="callout"><strong>只有后台这一条正常写入路径。</strong><p>主 Agent 不再拥有 remember 工具。你说“记住这个”会作为本轮内容交给后台模型，和其他经验统一提取、去重及更新。</p><p>主 Agent 每次请求模型前都会收到本会话最近三轮的后台状态。ADD/SUPERSEDE 表示已提交，NOOP 指向已有记录；pending/running 尚未保存，failed 表示失败。不会把“想记住”冒充“已经记住”。</p></div>
+<p>可复用性、范围和修正关系由后台模型判断；程序检查来源编号、作用域和版本。结构校验不能证明结论正确。</p>
+</section>
+
+<section id="capture">
+<span class="section-num">04 / CAPTURE</span>
+<h2>哪些话保存？什么时候真正写到硬盘？</h2>
+<p><strong>当前没有“有价值才存原文”的过滤器。</strong>只要启动了 V2，并且一次输入实际进入 <code>run_agent_turn()</code>，这一轮收集到的公开消息就会尝试留档。打字尚未提交，以及没有进入 Agent Turn 的本地斜杠命令，不走这条记录流程。</p>
+<div class="table-wrap"><table><thead><tr><th>内容</th><th>原始历史是否记录</th><th>是否应成为自动经验</th></tr></thead><tbody>
+<tr><td>“你好”“好的”</td><td>进入 Agent Turn 就记录</td><td>通常不应；由模型返回空经验列表。</td></tr>
+<tr><td>明确的项目约定、长期偏好</td><td>记录</td><td>提示词鼓励提取，要求带证据。</td></tr>
+<tr><td>“正在修改第 3 个文件”等进度</td><td>公开消息会记录</td><td>提示词要求排除临时进度。</td></tr>
+<tr><td>工具调用参数、工具结果、报错</td><td>记录公开内容，并做有限脱敏</td><td>只有可复用的环境约束、方法或失败经验才应提取。</td></tr>
+<tr><td>system、隐藏 thinking、压缩摘要</td><td>不记录到这条 V2 原文流</td><td>不会作为该流程的提取材料。</td></tr>
+<tr><td>程序追加的 user-role 重试指令</td><td>不作为真实用户消息录入</td><td>避免把程序自生成指令学成用户偏好。</td></tr>
+</tbody></table></div>
+<h3>“一轮”不是“模型调用一次”。</h3>
+<p>你提交一次问题后，Agent 可能调用模型三次、执行五个工具。对于这个记录器，仍然是一次 <code>run_agent_turn()</code>。它在入口记录真实用户问题，随后记录内部新增的公开消息。</p>
+<pre><code># 简化示意：展示生命周期，不是把所有细节复制过来
+recorder = TurnRecorder(这次用户问题)
+try:
+    return 执行_agent_loop(记录器=recorder)
+finally:
+    memory_service.capture(recorder)  # 本轮结束时才尝试入库</code></pre>
+<p>原上下文装进 <code>RecordedMessages</code> 时不会重新录一遍。只有之后的 <code>append()</code> 才捕获新增事件。compaction 换掉消息列表后，会重新包上记录器，因此压缩不会让它丢掉已经收集的本轮原始事件。</p>
+<h3>历史编号和搜索结果的 source_ids，分别指什么？</h3>
+<p>原始 <code>turns</code> 表的 <code>id</code> 标识这一轮，每条事件的 <code>id</code> 标识其中一条原始消息。例如轮次 <code>T42</code> 包含消息 <code>T42:0</code>、<code>T42:1</code>。这些是原文自身的编号，作用是让程序能按地址找到这一轮或某条消息。</p>
+<p>搜索时会把原文切成片段，给片段单独分配 ID，并在搜索结果的 <code>source_ids</code> 中放它所属的原始事件 ID。例如片段 <code>T42#chunk:1:1600</code> 的 <code>source_ids</code> 是 <code>["T42:1"]</code>；模型拿 <code>T42:1</code> 调 memory_read，就能读完整的那条原消息。这里表达的是“片段来自哪条原文”，不是原始历史又根据更早信息提炼而来。</p>
+<p><code>turns</code> 数据库表本身没有 <code>source_ids</code> 列。如果把完整 turn 包装成统一的搜索 / 读取结果，其 <code>source_ids</code> 列出该轮包含的全部事件 ID；自动提取经验的同名字段则指支撑经验的那些原始事件。它们最终都指向原文事件，但所在记录的含义不同。</p>
+<div class="grid2">
+<div class="card"><h4>正在执行时</h4><p>事件暂存在 <code>recorder.events</code> 这个内存列表里，每条分配 <code>turn_id:序号</code> 作为稳定事件 ID。</p></div>
+<div class="card"><h4>结束或 Python 异常退出时</h4><p><code>finally</code> 把整轮内容写入 <code>turns</code>，默认状态 <code>pending</code>。原文和待处理状态是同一条数据库记录。</p></div>
+</div>
+<div class="callout warn"><strong>边界：</strong>不是每条消息立即落盘。强制杀进程、断电等让 finally 没执行时，尚未入库的这一轮会丢失。数据库写入失败时，记录警告，主 Agent 的正常结果不因此被替换成记忆错误。当前也没有原文自动淘汰。</div>
+<h3>三条写入入口与审批</h3>
+<p>原文留档和后台提取不逐条弹审批。读工具通过 ToolContext.memory_service 访问同一个服务。后台处理结果在主模型请求前临时注入，计入预算，但不写入原始对话或再次提取。</p>
+<p class="source">源码：<code>agent_loop.py::run_agent_turn / _refresh_runtime_memory_context</code>；<code>memory_v2/service.py::capture / feedback</code>。</p>
+</section>
+
+<section id="extraction">
+<span class="section-num">05 / EXTRACTION</span>
+<h2>后台什么时候整理？到底筛选了什么？</h2>
+<p>启动时，有模型配置和可用调用预算，就创建提取模型并启动 <code>memory-extractor</code> 线程。它逐个领取当前工作目录的待处理历史；每轮留档后会唤醒它，程序启动时也会处理遗留任务。</p>
+<div class="callout issue"><strong>实际触发条件：有待处理历史 + 提取已开启 + 本进程还有调用额度。</strong><p>没有等满十轮，没有等到原文超过某个大小，也没有先用规则判断这一轮是否值得花 API 费用。纯寒暄同样可能产生提取调用，返回空结果只是“没有新增经验”，不是“没有调用模型”。</p></div>
+<figure class="diagram">
+<svg viewBox="0 0 980 535" role="img" aria-labelledby="sequence-title sequence-desc">
+<title id="sequence-title">TUI、Agent 线程、数据库与提取线程的时序</title>
+<desc id="sequence-desc">主线程提交问题给 Agent 线程。Agent 运行工具循环，结束时写数据库并唤醒提取线程，随后正常回收本轮。提取线程单独领取任务、请求提取 API、校验并写经验。主线程不用等待提取 API 返回。</desc>
+<rect class="node" x="30" y="20" width="170" height="53" rx="9"/><text class="strong" x="115" y="53" text-anchor="middle">TUI 主线程</text>
+<rect class="node model" x="276" y="20" width="170" height="53" rx="9"/><text class="strong" x="361" y="53" text-anchor="middle">Agent 工作线程</text>
+<rect class="node accent" x="522" y="20" width="170" height="53" rx="9"/><text class="strong" x="607" y="53" text-anchor="middle">SQLite 数据库</text>
+<rect class="node model" x="768" y="20" width="180" height="53" rx="9"/><text class="strong" x="858" y="53" text-anchor="middle">记忆提取线程</text>
+<path class="lane" d="M115 73 V504 M361 73 V504 M607 73 V504 M858 73 V504"/>
+<path class="edge" d="M115 117 H361"/><text class="label" x="238" y="106" text-anchor="middle">提交问题，启动一轮</text>
+<rect class="model node" x="290" y="139" width="143" height="56" rx="8"/><text x="361" y="162" text-anchor="middle" class="sub">主模型 / 工具循环</text><text x="361" y="182" text-anchor="middle" class="sub">在内存里记录事件</text>
+<path class="edge" d="M361 222 H607"/><text class="label" x="484" y="211" text-anchor="middle">本轮结束：保存 turns / pending</text>
+<path class="edge optional-edge" d="M361 265 H858"/><text class="label" x="705" y="253" text-anchor="middle">启用提取时唤醒线程</text>
+<path class="edge" d="M361 307 H115"/><text class="label" x="238" y="296" text-anchor="middle">正常交回本轮结果</text>
+<path class="edge" d="M858 339 H607"/><text class="label" x="735" y="328" text-anchor="middle">领取任务，改为 running</text>
+<rect class="model node" x="768" y="365" width="180" height="63" rx="8"/><text x="858" y="391" text-anchor="middle" class="strong">提取，再按需比较</text><text x="858" y="414" text-anchor="middle" class="sub">不占着数据库事务等网络</text>
+<path class="edge" d="M858 466 H607"/><text class="label" x="735" y="454" text-anchor="middle">校验 → 经验 + done 一起提交</text>
+<text class="sub" x="30" y="525">两条后台工作可重叠；图中是便于阅读的一种时序，不规定线程调度的先后。</text>
+</svg>
+<figcaption class="caption">图 2 · 负责提取记忆的线程和负责跑 Agent 的线程不是同一个。唤醒事件只提示“可能有任务”，真正的任务存在数据库里。</figcaption>
+</figure>
+<h3>模型收到哪些材料？</h3>
+<ol class="steps">
+<li><strong>取一轮未处理的公开历史。</strong><p>先保留最初用户问题，再优先挑近期结果。单个字符串 content 截到 6,000 字符，序列化材料合计最多约 24,000 字符；挑完再恢复事件先后顺序。这个截断只影响提取输入，不会删数据库原文。</p></li>
+<li><strong>先提取候选。</strong><p>程序把材料划成最多 1,000 字符的片段，尽量在换行处切分，标记 ID 和位置。模型返回零到四条候选，同时选 scope 和 1–8 个依据片段 ID。程序检查 ID 存在，将候选保存到 turn_candidates；空候选直接完成。模型不抄原文、不算字符偏移。</p></li>
+<li><strong>再用候选找旧经验。</strong><p>用正文、关键词、实体查找旧记录。同一作用域的记录可替代；更宽范围的记录只供参考，各组取前八条。窄范围经验不能阻止新增宽范围约定。旧 remember 记录也可以在相同作用域被明确的新结论修正。</p></li>
+<li><strong>必要时第二次调用模型比较。</strong><p>精确重复直接去重，没有旧命中直接新增；否则同轮候选批量比较，返回 ADD、NOOP 或 SUPERSEDE。程序限制替代目标和版本，并用事务提交。使用当前 runtime 的模型，无工具；提取输出预算 2,400 tokens、比较 1,600 tokens，请求超时配置 45 秒。</p></li>
+</ol>
+<h3>“提取经验”不是把原文缩短一下</h3>
+<p>下面是<strong>提取模型返回格式的示例</strong>。模型选中程序预先编号的片段，程序从该位置取得 quote 交给比较模型：</p>
+<pre><code>{
+  "memories": [{
+    "kind": "environment",
+    "statement": "本项目 Windows 环境运行测试使用 py -m pytest。",
+    "keywords": ["Windows", "pytest", "测试", "test command"],
+    "entities": ["测试环境"],
+    "scope": "project",
+    "evidence_ids": ["T42:0#part:0"],
+    "supersedes": []
+  }]
+}</code></pre>
+<div class="table-wrap"><table><thead><tr><th>字段</th><th>作用</th><th>谁来确定 / 检查</th></tr></thead><tbody>
+<tr><td>statement</td><td>下次可直接阅读的经验，要保留适用条件。</td><td>模型生成。提示词要求每条 ≤900 字符；程序实际上限为 1,200 字符。</td></tr>
+<tr><td>kind</td><td>区分决策、方法、环境、失败、偏好。</td><td>提示词约定这些类别；当前校验并未严格枚举所有 kind。</td></tr>
+<tr><td>keywords / entities</td><td>补充搜索词；实体也用于实验性关联。</td><td>模型生成，程序检查列表类型并裁剪数量、长度。</td></tr>
+<tr><td>scope</td><td>user 跨项目偏好、project 仓库约定、local 当前目录及环境。</td><td>模型依据材料选择，依据不明用 local；程序检查枚举和归属。</td></tr>
+<tr><td>evidence_ids</td><td>选择支撑结论的原文片段，可跨消息。</td><td>程序校验编号，保存来源 ID 和片段位置；比较或读取时从原文生成 quote，不逐字校验模型输出。</td></tr>
+<tr><td>supersedes</td><td>第一阶段保持空数组，不直接选旧 ID。</td><td>第二阶段用 SUPERSEDE + targets 表达替代，只能修改比较名单中同作用域的记录。</td></tr>
+</tbody></table></div>
+<p>提示词要求排除秘密、通用建议、临时进度，保留失败和不确定性，不把助手自称成功当作验证。<strong>来源编号有效不代表模型选对了片段、scope 或结论。</strong>原文仍可回查；长消息的输入预算仍可能使部分内容未被提取模型看到。</p>
+<details><summary>费用与失败细节</summary><p>运行时默认每进程最多 30 次记忆模型调用，由提取和比较共用；失败尝试也占额度。一轮正常处理一次提取、必要时一次比较。两阶段之间用尽预算则保存候选、放回 pending，不消耗失败次数；恢复时继续比较，不重新提取。这个限制不是月账单上限，也不是所有主 Agent 请求的上限；底层网络请求仍受 adapter 的请求策略影响。</p><p>对当前代码专门识别的 api.deepseek.com，提取请求默认关闭 thinking，避免输出预算用完却没返回 JSON；这不改变主编码 Agent 的思考设置，也没有对所有提供商套用同样规则。</p></details>
+<p class="source">源码：<code>memory_v2/runtime.py::create_memory_manager</code>；<code>service.py::start / _work / process_one / _validate_proposal</code>；<code>model.py::extract / consolidate / complete</code>。</p>
+</section>
+
+<section id="correction">
+<span class="section-num">06 / DEDUPLICATION &amp; CORRECTION</span>
+<h2>重复不再加一条，修正也不直接抹掉过去。</h2>
+<p>这里没有实现一个能任意重新编排整座记忆库的“合并 Agent”。目前提供的是<strong>局部比较、精确去重、带出处的替代</strong>。</p>
+<div class="table-wrap"><table><thead><tr><th>情况</th><th>当前处理</th><th>局限</th></tr></thead><tbody>
+<tr><td>同一 turn 再次入库</td><td>turn ID 为主键，INSERT OR IGNORE 防止重复插入。</td><td>不同 turn ID 即使内容一样，也分别保留历史。</td></tr>
+<tr><td>候选陈述与提供的旧经验相同</td><td>合并空白后精确比较，相同则 NOOP；原始新历史仍保留。</td><td>精确去重检查可见有效旧记录及同批候选；改写措辞再由比较模型判断。不会把新出处自动追加到旧经验。</td></tr>
+<tr><td>同轮多个观察可合并</td><td>提示词要求模型组织成一条简洁经验。</td><td>不是程序实现了普遍的语义合并。</td></tr>
+<tr><td>同条件下明确纠正旧知识</td><td>新记录保存；旧记录 status 改为 superseded；links 记录替代关系。</td><td>旧经验没被召回，或模型没识别纠正，冲突可能遗留。</td></tr>
+<tr><td>旧记录来自以前的 remember</td><td>仍可检索；后台可在相同作用域依据新原文决定跳过或替代。</td><td>不会因为换成后台写入就删除已有记忆；跨作用域不能替代。</td></tr>
+</tbody></table></div>
+<div class="grid2">
+<div class="card"><h4>旧记录 m1</h4><p>“本项目 Windows 测试使用 py -m pytest。”</p><p><code>status: superseded</code><br>仍然保留原始内容和出处。</p></div>
+<div class="card"><h4>新记录 m2</h4><p>“本项目 Windows 测试现在使用 uv run pytest。”</p><p><code>status: active</code><br><code>m2 —supersedes→ m1</code></p></div>
+</div>
+<p>后续正常经验搜索默认只选 active 记录；按 ID 仍可读旧记录。<strong>历史原文搜索可能搜到旧说法</strong>，因此结果提供时间，并提醒对照当前代码或新纠正。失效标记不是把旧话从所有历史中删掉。</p>
+<p>更新时还检查旧记录版本：后台从数据库读到 m1 后，若另一个进程已经修改 m1，本次提交会失败并回滚，避免拿过时状态覆盖更新。</p>
+<p class="source">源码：<code>service.py::_comparison_context / _validate_decisions / process_one</code>；<code>store.py::enqueue / apply</code>。</p>
+</section>
+
+<section id="search">
+<span class="section-num">07 / RETRIEVAL</span>
+<h2>memory_search 怎么查：明确是 BM25，不把“混合”当“语义”。</h2>
+<p><strong>查询文字由主模型写在工具参数里。</strong>用户说“按之前方式跑测试”，主模型可能改写为 <code>Windows pytest 测试</code>。MemoryService 收到的就是工具参数中的 query，不会再额外调用一个模型改写查询或做重排。</p>
+<h3>第一步：按范围拿记录，准备候选文本</h3>
+<p>先从 SQLite 读取本工作目录原文和当前可见经验。默认排除已被替代的经验，排除未来时间记录；有文件哈希的经验还会检查文件是否变化。<strong>然后在 Python 中计算 BM25</strong>，没有调用 SQLite FTS，也没有预建持久化倒排索引。</p>
+<p>原文每个事件切成最长 1,800 字符的片段，起点按 1,600 字符递增，因此相邻重叠 200 字符。这有助于命中长工具结果中间或末尾的信息；片段边界只服务搜索，不参与模型消息协议的工具配对。</p>
+<h3>第二步：拆词并评分</h3>
+<div class="grid2">
+<div class="card"><h4>拆词规则</h4><p>英文转小写；保留完整标识符，同时按 <code>_ . / : -</code> 拆部分；中文使用相邻两字组合。</p><pre><code>Windows → windows
+run_command → run_command / run / command
+运行测试 → 运行 / 行测 / 测试</code></pre><p>这是简单字面处理，不是模型理解句意。</p></div>
+<div class="card"><h4>BM25 给什么加分</h4><p>查询词在候选中出现会得分；越稀有的查询词通常越有区分度。重复出现会加分但逐渐饱和，并按文本长度做校正，避免长日志只靠字多占优。</p><p>当前参数 <code>k1=1.2</code>、<code>b=0.75</code>。没有共同词项时得分为零，不进入这一组结果。</p></div>
+</div>
+<h3>用当前函数实际算一遍</h3>
+<p>固定三个候选，查询 <code>Windows pytest</code>，下面分数来自本仓库 <code>retrieval.bm25()</code>，不是为展示手填的“相关度”。</p>
+<div class="table-wrap"><table><thead><tr><th>候选原文</th><th>BM25 分数</th><th>为什么</th></tr></thead><tbody>
+<tr><td>Windows 下运行测试使用 py -m pytest。</td><td>1.506874</td><td>同时匹配 windows 和 pytest。</td></tr>
+<tr><td>运行 pytest 前需要设置项目环境变量。</td><td>0.453151</td><td>匹配 pytest，但没有 windows。</td></tr>
+<tr><td>前端开发启动命令是 npm run dev。</td><td>0，不进入结果</td><td>没有查询词。</td></tr>
+</tbody></table></div>
+<div class="callout warn">把查询改成 <strong>“自动化验证”</strong>，同样三个候选的返回列表是空的。虽然人能联想到 pytest，但这里没有共同词项，BM25 不会自动理解这种语义关联。模型生成的别名可能改善用词差异，不能保证覆盖所有问法。</div>
+<h3>第三步：所有候选一起排一次，原文重叠命中合并</h3>
+<p>历史片段、显式记忆、导入记忆和自动提取经验都参与搜索。每条经验构造一个“正文 + 关键词 + 实体”文本，每个原文片段构造一个文本，统一计算一次 BM25。取消 RRF，没有经验的第二次投票，也没有时间排名加分。</p>
+<figure class="diagram">
+<svg viewBox="0 0 980 410" role="img" aria-labelledby="search-title search-desc">
+<title id="search-title">按话题搜索与按时间浏览分开处理</title>
+<desc id="search-desc">非空 query 先按作用域状态和可选时间筛选，再将经验和原文片段统一 BM25 排名。空 query 必须有时间范围，仅浏览原始 turn 的时间和用户问题，按时间分页。</desc>
+<rect class="node" x="260" y="15" width="460" height="55" rx="10"/><text class="strong" x="490" y="48" text-anchor="middle">memory_search(query, 时间范围, cursor)</text>
+<path class="edge" d="M490 70 V95 H245 V120"/><path class="edge" d="M490 95 H735 V120"/>
+<rect class="node accent" x="25" y="122" width="440" height="75" rx="10"/><text class="strong" x="245" y="151" text-anchor="middle">query 非空：话题搜索</text><text class="sub" x="245" y="178" text-anchor="middle">先筛作用域、有效状态及可选时间</text>
+<rect class="node" x="515" y="122" width="440" height="75" rx="10"/><text class="strong" x="735" y="151" text-anchor="middle">query 为空：历史浏览</text><text class="sub" x="735" y="178" text-anchor="middle">必须提供时间范围；只取 turns</text>
+<path class="edge" d="M245 197 V224"/><path class="edge" d="M735 197 V224"/>
+<rect class="node accent" x="25" y="226" width="440" height="75" rx="10"/><text class="strong" x="245" y="255" text-anchor="middle">经验＋原文片段 → 一次 BM25</text><text class="sub" x="245" y="282" text-anchor="middle">重叠命中合并，得分不相加</text>
+<rect class="node" x="515" y="226" width="440" height="75" rx="10"/><text class="strong" x="735" y="255" text-anchor="middle">按 recorded_at、id 从早到晚</text><text class="sub" x="735" y="282" text-anchor="middle">用户问题预览＋时间＋整轮 ID</text>
+<path class="edge" d="M245 301 V328"/><path class="edge" d="M735 301 V328"/>
+<rect class="node model" x="25" y="330" width="440" height="58" rx="10"/><text class="strong" x="245" y="364" text-anchor="middle">匹配摘录、BM25 分、出处</text>
+<rect class="node model" x="515" y="330" width="440" height="58" rx="10"/><text class="strong" x="735" y="364" text-anchor="middle">历史页＋next_cursor；score 为 null</text>
+</svg>
+<figcaption class="caption">图 3 · 时间不参与话题打分。纯时间浏览不混入经验；有更多历史时用原范围和游标继续。</figcaption>
+</figure>
+<p>同一条消息的相邻片段，如果命中了同一个原文位置，合并成一个结果并保留最高 BM25 分。不同位置的事实不会因为同属一轮就被删掉。经验和其来源原文仍是不同结果，类型和出处明确标注，不声称完成语义去重。</p>
+<p>话题结果的 <code>score</code> 就是 BM25 分数，不是概率或真实性评分；不同查询、不同候选库的分数不应直接比较。关键词别名只增加词项匹配机会，不保证任意语义问法都能搜到。</p>
+<details><summary>时间浏览示例与公式</summary>
+<p>“昨晚聊了什么”：query 为空，按时间列每轮用户问题；看某轮实际结果再 memory_read(turn_id)。“昨晚测试为什么失败”：query 填测试相关词，先限昨晚，再 BM25，字体记录不会因时间符合而被加进结果。</p>
+<p>BM25 对每个查询词累计：<code>IDF × tf × 2.2 / (tf + 1.2 × (0.25 + 0.75 × 文档长度 / 平均长度))</code>；<code>IDF = ln(1 + (N - df + 0.5) / (df + 0.5))</code>。tf 是词频，df 是包含该词的候选数量。</p>
+<p>旧 graph/embedder 参数不再参与检索；旧关系和向量表保留，不删除用户数据。正常搜索无额外模型请求。</p>
+</details>
+<p class="source">源码：<code>service.py::search / _browse_history / _collapse_overlaps</code>；<code>store.py::history_page</code>；<code>retrieval.py::tokenize / bm25 / excerpt / parse_time_range</code>。</p>
+</section>
+
+<section id="readback">
+<span class="section-num">08 / BACK INTO CONTEXT</span>
+<h2>搜到了以后，究竟是谁把它给模型？</h2>
+<h3>默认路径：主模型选择工具，Agent Loop 添加工具结果</h3>
+<div class="flow-row" aria-label="记忆工具调用链"><div class="step">主模型返回<br><strong>memory_search 调用</strong></div><span class="arrow">→</span><div class="step">ToolRegistry<br><strong>校验参数并执行</strong></div><span class="arrow">→</span><div class="step">MemoryService<br><strong>搜索与排序</strong></div><span class="arrow">→</span><div class="step">ToolResult<br><strong>JSON 格式的文本</strong></div><span class="arrow">→</span><div class="step">Agent Loop<br><strong>追加 tool_result</strong></div></div>
+<p>下一次主模型请求携带这条工具结果，模型才看到旧记忆。与 <code>read_file</code> 一样，搜索工具不自己修改主上下文列表，也不直接替模型决定执行哪个命令。</p>
+<div class="table-wrap"><table><thead><tr><th>工具</th><th>输入</th><th>实际输出与限制</th></tr></thead><tbody>
+<tr><td>memory_search</td><td>query：最多 1,000 字符；可同时传 start_time / end_time（带时区，左闭右开）。只查时间时 query 可省；后续页传 cursor 和相同时间范围。limit 默认 5，最大 10。</td><td>话题返回类型、范围、时间、BM25 分、命中词、出处和约 1,200 字符的命中摘录。纯时间返回用户问题预览、整轮 ID、next_cursor，分数为 null。</td></tr>
+<tr><td>memory_read</td><td>id 来自搜索 / 出处；offset 默认 0。</td><td>读取可见经验及引文，或原始 turn / 事件；把序列化文本每 6,000 字符分页，next_offset 指出下一页。</td></tr>
+<tr><td>后台状态（非工具）</td><td>本会话最近三轮的状态与提交结果。</td><td>主模型请求前刷新，显示新增、重复跳过或替代；未完成时显示 pending/running，失败显示 failed。</td></tr>
+</tbody></table></div>
+<p>拿搜索片段或依据片段 ID 调用 read，读取<strong>该片段</strong>；读取经验时程序会补出其依据的 quote。拿 source_ids 的事件 ID 读取完整原消息；拿 source_turn_ids 读取当前工作目录的整轮历史。共享经验可以读取其明确引用的消息，不能据此展开其他目录的整轮对话。</p>
+<h3>固定采用按需工具检索</h3>
+<p>主模型决定需要搜索时再调用工具。内部 context() 接口仍供历史实验和测试使用，产品启动不会自动预注入，也不提供预注入版本选择。历史实验没有证明预注入稳定提高修复率；同样不能声称当前默认方案已经取得效果提升。</p>
+</section>
+
+<section id="storage">
+<span class="section-num">09 / SQLITE</span>
+<h2>SQLite 的价值是管理更新和并发，不是让搜索自动变强。</h2>
+<p>数据库默认位置：<code>%USERPROFILE%\.cortexterm\memory-v2\memory.sqlite3</code>。它是本地文件，使用 Python 标准库 <code>sqlite3</code>，不需要 Redis、独立数据库服务或新运行时依赖。启用 WAL 时运行期间可能出现同目录的 <code>-wal</code>、<code>-shm</code> 辅助文件。</p>
+<div class="table-wrap"><table><thead><tr><th>表</th><th>保存的内容</th><th>为什么需要</th></tr></thead><tbody>
+<tr><td>turns</td><td>turn ID、项目 / 工作目录、session、时间、用户问题、events JSON、处理状态、租期、次数、错误。</td><td>同一条记录既是历史原文，也是后台提取任务。不需要另建一份队列文件。</td></tr>
+<tr><td>memories</td><td>经验正文、关键词、实体、来源消息 ID 和片段位置、scope、origin、status、version、时间等。</td><td>不重复保存 quote 文本，读取时根据位置从原文还原。</td></tr>
+<tr><td>memory_outcomes</td><td>每轮已提交的 ADD / NOOP / SUPERSEDE 结果。</td><td>与记忆更新同一事务提交，供主 Agent 查看实际写入结果。</td></tr>
+<tr><td>links</td><td>source、target、kind；kind 包括 supersedes 和 related。</td><td>追踪纠正关系；兼容保留的 related 关系不参与排名。</td></tr>
+<tr><td>vectors</td><td>兼容保留的旧向量数据。</td><td>当前检索不读取或生成向量。</td></tr>
+<tr><td>turn_candidates</td><td>已校验的提取候选 JSON。</td><td>第二阶段失败或预算耗尽时，恢复比较而非重新提取。</td></tr>
+</tbody></table></div>
+<p><strong>表内仍然用 JSON 存复杂字段。</strong><code>turns.events</code> 是 <code>json.dumps(events)</code> 得到的字符串；关键词、片段位置和处理结果也用 JSON 编码。数据库负责组织多条记录的状态与关联。</p>
+<h3>关键场景：一条新经验替代旧经验</h3>
+<figure class="diagram">
+<svg viewBox="0 0 980 255" role="img" aria-labelledby="transaction-title transaction-desc">
+<title id="transaction-title">替换经验的事务边界</title>
+<desc id="transaction-desc">同一事务检查旧记录版本，更新旧记录状态和关系，插入新经验，并完成原文任务。所有操作成功才提交，异常则回滚，避免部分更新。</desc>
+<rect x="20" y="20" width="940" height="163" rx="14" fill="#eaf6f1" stroke="#a8cdbd"/>
+<text x="44" y="49" class="strong">BEGIN IMMEDIATE · 以下修改属于同一次事务</text>
+<rect class="node" x="42" y="76" width="202" height="72" rx="9"/><text x="143" y="105" text-anchor="middle">检查旧记录版本</text><text x="143" y="130" text-anchor="middle" class="sub">确认来源、作用域、所有权</text>
+<path class="edge" d="M244 112 H270"/>
+<rect class="node" x="272" y="76" width="202" height="72" rx="9"/><text x="373" y="105" text-anchor="middle">旧记录失效 + 关系</text><text x="373" y="130" text-anchor="middle" class="sub">保留旧内容与证据</text>
+<path class="edge" d="M474 112 H500"/>
+<rect class="node" x="502" y="76" width="202" height="72" rx="9"/><text x="603" y="105" text-anchor="middle">写入新经验</text><text x="603" y="130" text-anchor="middle" class="sub">附来源与关键词</text>
+<path class="edge" d="M704 112 H730"/>
+<rect class="node" x="732" y="76" width="202" height="72" rx="9"/><text x="833" y="105" text-anchor="middle">任务改为 done</text><text x="833" y="130" text-anchor="middle" class="sub">本轮提取已经处理</text>
+<text x="42" y="218" class="strong">全部成功 → COMMIT</text><text x="437" y="218" class="strong">任一步异常 → ROLLBACK</text>
+<text x="42" y="245" class="sub">不会只留下“旧经验已经失效，但新经验还没写进去”的本次半成品。</text>
+</svg>
+<figcaption class="caption">图 4 · 数据库事务的作用。原文早已入库，这里提交的是提取结果及任务完成状态。</figcaption>
+</figure>
+<div class="table-wrap"><table><thead><tr><th>比较项</th><th>JSON / JSONL 也能怎么做</th><th>本次选择 SQLite 的理由</th></tr></thead><tbody>
+<tr><td>只存几十条记忆</td><td>一个 JSON 很直接，临时文件加 replace 可以整体更新。</td><td>这类需求不强迫使用数据库。</td></tr>
+<tr><td>连续历史追加</td><td>JSONL 很合适，不必重写整个文件。</td><td>本次还要更新任务状态和经验关系，并不只是追加日志。</td></tr>
+<tr><td>多条记录一起修改</td><td>可以自己设计日志、重放、锁和恢复协议，或整体换文件。</td><td>事务直接表达这组原子更新，少维护一套协议。</td></tr>
+<tr><td>多个进程领取同一任务</td><td>需要跨进程锁，锁住“读取状态 + 改状态”全过程。</td><td>事务中领取任务，数据库负责写入互斥。</td></tr>
+<tr><td>检索速度与语义</td><td>JSON 读入后也可以计算同样 BM25。</td><td>当前主要收益是存储管理；搜索仍在 Python 全量计算，不能宣称数据库已解决性能问题。</td></tr>
+</tbody></table></div>
+<p class="source">源码：<code>memory_v2/store.py::connect / enqueue / claim / apply</code>。每次数据库操作使用自己的连接；网络调用不放在数据库事务里面。WAL 支持读写更好地重叠，但仍不是多个写事务同时任意写入。</p>
+</section>
+
+<section id="lifecycle">
+<span class="section-num">10 / JOB LIFECYCLE</span>
+<h2>后台失败了，会不会丢原文、重复处理或堵住 Agent？</h2>
+<p>一轮历史的 <code>state</code> 只表示“经验提取处理到哪一步”，不是这轮主 Agent 是否成功。主 Agent 修复失败的历史，也可以被成功整理成失败经验。</p>
+<figure class="diagram">
+<svg viewBox="0 0 980 355" role="img" aria-labelledby="state-title state-desc">
+<title id="state-title">记忆提取任务状态与恢复</title>
+<desc id="state-desc">新历史进入 pending，领取时改 running，提取成功含空结果则 done，失败则 failed。failed 只有显式重试且领取次数小于三时回 pending。running 租期过期且次数小于三可再次领取，三次后过期则 failed。</desc>
+<rect class="node" x="35" y="80" width="190" height="83" rx="12"/><text class="strong" x="130" y="112" text-anchor="middle">pending · 待处理</text><text class="sub" x="130" y="139" text-anchor="middle">没开提取 / 没额度就留在这里</text>
+<path class="edge" d="M225 121 H360"/><text class="label" x="292" y="105" text-anchor="middle">领取，attempts + 1</text>
+<rect class="node model" x="362" y="80" width="190" height="83" rx="12"/><text class="strong" x="457" y="112" text-anchor="middle">running · 处理中</text><text class="sub" x="457" y="139" text-anchor="middle">领取时设置 180 秒租期</text>
+<path class="edge" d="M552 100 H673 V65 H755"/><text class="label" x="652" y="49" text-anchor="middle">成功，包括零条经验</text>
+<rect class="node accent" x="757" y="27" width="190" height="78" rx="12"/><text class="strong" x="852" y="59" text-anchor="middle">done · 已处理</text><text class="sub" x="852" y="84" text-anchor="middle">原文保留，结果已提交</text>
+<path class="edge" d="M552 141 H673 V206 H755"/><text class="label" x="652" y="236" text-anchor="middle">请求 / 校验 / 提交失败</text>
+<rect class="node danger" x="757" y="168" width="190" height="78" rx="12"/><text class="strong" x="852" y="200" text-anchor="middle">failed · 提取失败</text><text class="sub" x="852" y="225" text-anchor="middle">保存错误，原文仍在</text>
+<path class="edge optional-edge" d="M420 80 V31 H495 V80"/><text class="label" x="450" y="17" text-anchor="middle">租期过期且次数不足 3：重新领取</text>
+<path class="edge optional-edge" d="M852 246 V292 H130 V163"/><text class="label" x="481" y="280" text-anchor="middle">显式 --retry-failed 且 attempts &lt; 3，才重新排队</text>
+<text class="sub" x="35" y="334">达到 3 次领取后又崩溃 / 过期，后续领取扫描会把它标记 failed。没有无限自动重试。</text>
+</svg>
+<figcaption class="caption">图 5 · 任务状态机。正常失败不会立即自动回 pending；进程中断留下的 running 则按租期恢复。</figcaption>
+</figure>
+<p>两阶段之间额度用尽：保存 turn_candidates，running 回 pending，不消耗失败次数。比较失败则 failed；人工重试时复用候选，重新检索旧经验。依据旧经验作 NOOP 的提交也检查旧记录版本，防止比较期间它已失效却丢掉新候选。</p>
+<h3>为什么需要租期和 attempts？</h3>
+<p>进程 A 领取任务后可能崩溃。如果永远保留 running，其他进程就永远不接手。所以领取时设置 180 秒租期，过期后允许重新领取。<code>attempts</code> 既限制领取次数，也用来识别这一轮任务的持有者。</p>
+<pre><code>A 领取任务：attempts = 1
+A 太久没提交，租期到期
+B 重新领取：attempts = 2
+A 后来才拿到网络响应，尝试写结果
+数据库检查：当前 attempts 是 2，A 只持有 1 → 拒绝 A 的提交</code></pre>
+<p>这样不会让“过期的旧线程”覆盖新线程的结果。但不保证网络请求恰好只调用一次：租期接手时，旧进程可能还活着，短时间可能有重复请求。它保证的是过期结果不能随意发布，<strong>不是 exactly-once 的外部 API 调用</strong>。</p>
+<h3>线程什么时候等待、什么时候退出？</h3>
+<p>线程连续处理能领取到的任务；没有任务时用 <code>Event.wait(1)</code> 等待，新历史用 <code>set()</code> 提醒它。这个等待最多 1 秒，会周期性醒来检查；不是一个持续无休止空转的 while。真正的队列仍在数据库中，事件只用作唤醒提示。</p>
+<p>退出设置停止标记，最多等待记忆线程 1 秒，不无限等待慢 API。任务如果来不及提交，之后可以按租期恢复。SQLite 连接有 5 秒忙等待超时，数据库无法写入也会失败；“后台”不等于所有 I/O 一定零延迟。</p>
+<p class="source">源码：<code>service.py::_work / process_one / close</code>；<code>store.py::claim / fail / retry_failed / apply</code>。</p>
+</section>
+
+<section id="scope">
+<span class="section-num">11 / BOUNDARIES</span>
+<h2>哪些记录能查，时间和隐私又怎样处理？</h2>
+<div class="table-wrap"><table><thead><tr><th>范围</th><th>当前定义</th><th>例子</th></tr></thead><tbody>
+<tr><td>user</td><td>当前操作系统用户数据库内可跨项目使用。</td><td>解释代码时先讲调用链。</td></tr>
+<tr><td>project</td><td>按 Git common directory 标识项目；同一仓库的 worktree 可共享这类记忆。</td><td>仓库统一的测试约定。</td></tr>
+<tr><td>local</td><td>同项目且同一个规范化后的工作目录。</td><td>当前 checkout 或本地环境特有的经验。</td></tr>
+<tr><td>原始 turns</td><td>始终按 project + workspace 过滤。</td><td>不同 worktree 不会仅因同仓库而互相读到原始对话。</td></tr>
+</tbody></table></div>
+<p>后台模型根据原文选择 user/project/local，不确定时选 local。跨项目偏好、仓库约定、当前目录环境分别对应三种范围。以上是查询隔离，不是操作系统级加密或多租户身份认证；同一 OS 用户直接读数据库文件仍能访问其中内容。</p>
+<h3>模型理解时间含义，工具按明确范围执行</h3>
+<p>主 Agent 依据每次请求前更新的本地时间与时区理解用户的时间含义，然后向 <code>memory_search</code> 传入 <code>start_time</code>、<code>end_time</code>。例如查询“2026-10-20 晚上”时，可以传入 <code>2026-10-20T18:00:00+08:00</code> 到 <code>2026-10-21T00:00:00+08:00</code>。工具只校验参数并执行范围查询，不从文本自动猜日期；含糊的时间应先询问用户。没有额外的时间解析模型请求。</p><p>两个时间参数须同时提供、带时区且开始早于结束，采用左闭右开区间。<code>query</code> 可为空，表示只查这个范围内的记录。带关键词时先按时间过滤，再做一次 BM25；空查询仅按时间分页列原始对话，不混入经验，也不计算相关性分。</p>
+<p><strong>用于筛选的是 turn 开始记录的时间</strong>，不是从对话文字推理出的现实事件日期。一轮跨过午夜，仍按该 turn 的 recorded_at 归属。句子“去年我配置过这个”不会让这条今天的记录自动归入去年。语义解析由主模型完成，程序不保证它对每个复杂表达都理解正确；自动预检索仍只用关键词，时间范围由工具调用明确指定。</p>
+<h3>安全边界</h3>
+<p>代码会对常见密钥格式和 password、api_key 等字段做脱敏；提取提示词要求日志是数据，不能执行日志中的指令。提取模型没有工具，搜索结果也提醒历史可能过时。这些是有限防护，不是任意秘密检测或对提示词注入的完整防御。</p>
+<p>默认后台整理会把选中的历史材料额外发给已配置的模型接口，受调用预算约束；但主 Agent 调用记忆工具后，返回片段仍会随下一次正常模型请求发送。两条路径都需要区分“本地存储”和“进入 API 请求”。</p>
+<p class="source">源码：<code>service.py::project_identity / redact / redact_value</code>；<code>store.py::records / turns</code>；<code>retrieval.py::parse_time_range</code>。</p>
+</section>
+
+<section id="operations">
+<span class="section-num">12 / OPERATIONS</span>
+<h2>怎么启动、怎么看它真的做了什么？</h2>
+<p>以下命令在终端输入。<code>/memory</code> 才是在 CortexTerm 自己的输入框中输入。</p>
+<pre><code>cortexterm</code></pre>
+<p>无需额外参数。调整后台调用额度时，可在原 settings.json 内合并这一项，不要覆盖整个配置文件：</p>
+<pre><code>"memory": { "maxExtractionCalls": 30 }</code></pre>
+<div class="table-wrap"><table><thead><tr><th>观察方式</th><th>看什么</th><th>额外调用模型？</th></tr></thead><tbody>
+<tr><td>TUI 输入 /memory</td><td>记录数量、队列状态、调用数量和数据库位置。</td><td>否</td></tr>
+<tr><td>诊断命令 status</td><td>可见记录和 pending / running / done / failed 数量。</td><td>否</td></tr>
+<tr><td>诊断命令 search</td><td>搜索结果、BM25 或 chronological 策略、时间范围、候选数或翻页游标、耗时。</td><td>不调用模型</td></tr>
+<tr><td>诊断命令 read</td><td>按 ID 打开记录或原始证据。</td><td>否</td></tr>
+<tr><td>诊断命令 process</td><td>主动处理积压提取任务，可选择重试失败任务。</td><td>是</td></tr>
+</tbody></table></div>
+<pre><code># 在项目目录中运行。前三个不做经验提取。
+python -m cortexterm.memory_v2 status
+python -m cortexterm.memory_v2 search "Windows pytest"
+python -m cortexterm.memory_v2 read &lt;搜索返回的ID&gt;
+
+# 这条会发出真实提取请求，最多处理 5 次
+python -m cortexterm.memory_v2 process --max-calls 5 --retry-failed
+
+# 指定项目时，全局参数写在子命令前
+python -m cortexterm.memory_v2 --project D:\MiniCode\CortexTerm status</code></pre>
+<p>诊断 search 和 TUI 使用同一套搜索规则，无需传模式参数。直接运行诊断命令也不会先自动导入旧 Session。</p>
+<h3>从现象判断处理到哪一步</h3>
+<ul class="checklist">
+<li><strong>pending 增加，memories 没增加：</strong>可能没有模型配置、预算已用完或后台还在处理。</li>
+<li><strong>done 增加，经验仍没增加：</strong>可能模型返回空列表，或候选被精确去重。这不表示没有消耗提取请求。</li>
+<li><strong>failed 增加：</strong>检查 API / JSON / 片段编号 / scope / 版本校验等错误；原文仍可搜索。没有模型抄错引文导致的逐字符校验失败。</li>
+<li><strong>数据库有记录，模型却不知道：</strong>默认没有自动预注入；模型需要调用搜索工具，且还可能因用词不匹配而搜不到。</li>
+<li><strong>搜索有结果，回答仍错：</strong>召回相关材料和正确使用材料是两件事，还要看返回片段、时间、上下文及主模型后续行为。</li>
+</ul>
+</section>
+
+<section id="limits">
+<span class="section-num">13 / WHAT EXISTS</span>
+<h2>哪些是当前能力，哪些还只是接口或缺口？</h2>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>状态</th><th>准确表述</th></tr></thead><tbody>
+<tr><td>跨会话公开历史留档</td><td><span class="pill">已实现</span></td><td>每轮结束写 SQLite；不保证强杀时保存尚未结束的一轮。</td></tr>
+<tr><td>经验提取与来源校验</td><td><span class="pill optional">可选</span></td><td>单轮提取，最多四条；检查出处，不能证明知识一定正确。</td></tr>
+<tr><td>记忆冲突处理</td><td><span class="pill">局部实现</span></td><td>候选范围内去重、版本校验、supersedes；不是全库语义一致性检查。</td></tr>
+<tr><td>词项搜索 / 日期查询</td><td><span class="pill">已实现</span></td><td>话题统一 BM25；时间仅作过滤。空查询按时间分页浏览历史。</td></tr>
+<tr><td>向量语义检索</td><td><span class="pill off">未启用</span></td><td>现采用单次 BM25，不调用 embedder。</td></tr>
+<tr><td>关联扩展</td><td><span class="pill off">已停用</span></td><td>保留关系用于查看，不参与搜索排名。</td></tr>
+<tr><td>文件变化后经验失效</td><td><span class="pill optional">需已有元数据</span></td><td>支持检查 record.file_hashes；没有自动扫描仓库生成这些摘要 / 哈希。</td></tr>
+<tr><td>“有价值才调用提取模型”</td><td><span class="pill off">未实现</span></td><td>当前每轮均可排队，模型调用后再返回零条或若干条。</td></tr>
+<tr><td>磁盘容量与历史淘汰</td><td><span class="pill off">未实现</span></td><td>原文持续积累；上下文 token 上限不限制硬盘大小。</td></tr>
+<tr><td>大规模搜索性能</td><td><span class="pill off">尚未优化</span></td><td>每次加载范围内历史、重新分块和算 BM25，没有增量倒排索引。</td></tr>
+<tr><td>使用次数驱动淘汰</td><td><span class="pill off">未形成闭环</span></td><td>uses 不是所有工具读取的完整计数，当前也不据此自动淘汰。</td></tr>
+<tr><td>静默迁移所有旧会话</td><td><span class="pill off">没有</span></td><td>只导入旧版记忆记录；原 Session 继续独立保存与恢复。</td></tr>
+</tbody></table></div>
+<p>这些缺口不能通过换一个“高级记忆”名字补上。后续若继续修改，应分别验证：前置筛选能否减少无价值调用；更强检索能否增加正确命中而不引入旧错知识；增量索引能否在大量历史下控制延迟。本文只说明已存在的实现，不把这些后续工作视为已完成。</p>
+</section>
+
+<section id="evidence">
+<span class="section-num">14 / EVIDENCE</span>
+<h2>工程机制跑通了，但“修复更强”还没有被证明。</h2>
+<p>以下为代码基线对应的既有评测记录，本文编写没有重新发起模型实验。测试正确性和 Agent 效果分开看。</p>
+<div class="grid2">
+<div class="card"><h4>工程测试</h4><p><strong>357 passed，3 skipped。</strong>其中 30 项 memory-v2 检查覆盖存盘、隔离、出处、任务领取、租期恢复、失效线程不能覆盖结果等。</p><p>这证明约定的代码行为有测试覆盖，不证明每条经验都对。</p></div>
+<div class="card"><h4>模型效果</h4><p>构造任务上，历史信息有帮助；真实仓库小样本上，自动预注入未改善修复，甚至出现更差结果。</p><p>不能宣称 Memory V2 提高了 SWE-bench resolved。</p></div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>策略</th><th>6 个构造任务 × 每题 2 次</th><th>2 个真实仓库历史 bug</th></tr></thead><tbody>
+<tr><td>无记忆</td><td>2 / 12</td><td>2 / 2</td></tr>
+<tr><td>完整历史直接提供</td><td>12 / 12</td><td>这组未运行</td></tr>
+<tr><td>原文搜索预注入</td><td>11 / 12</td><td>1 / 2</td></tr>
+<tr><td>经验混合搜索预注入</td><td>12 / 12</td><td>0 / 2</td></tr>
+<tr><td>混合 + 关联扩展</td><td>12 / 12；实际没有新增图候选</td><td>这组未运行</td></tr>
+</tbody></table></div>
+<p>两列是不同实验，预算和任务不同，不能横向拼成一个总体通过率。构造题包含只在历史里出现的约定；完整历史基线在同样记忆预算下能放完整，没有故意截坏它。真实仓库回放只有两题，线索笔记是构造的，失败运行在限定步数里没有完成有效修改。</p>
+<p>构造任务的提取阶段另外花了 43 次模型调用和约 552 秒，不包含在主 Agent 耗时里。关联扩展没有带来额外候选，不能把耗时差解释成“图的优势”。构造任务的一个错误判题条件经过统一修正，旧输出原样重判；原始结果与复核结果都保留。</p>
+<div class="callout"><strong>最终取舍：</strong>保留可追溯历史和按需记忆工具，默认后台提取并按需调用工具；预注入和关联扩展不再作为产品选项。以上成绩属于旧版实现，不能代表本次单次 BM25 与两阶段更新的效果。最终默认的按需工具策略还没有做相同条件下的端到端比较，因此它是保守选择，不是已经证明优胜的方案。</div>
+<p>完整方法与限制见 <a href="memory-v2-evaluation.md">memory-v2-evaluation.md</a>；冻结证据见 <a href="evidence/memory-v2-20261020/README.md">证据索引</a>。浏览器若下载 Markdown，可在编辑器中打开。</p>
+</section>
+
+<section id="sources">
+<span class="section-num">15 / SOURCE MAP</span>
+<h2>需要看代码时，沿调用链找，不必从头读一遍。</h2>
+<p>下面路径相对于仓库根目录 <code>D:\MiniCode\CortexTerm</code>。函数名比行号稳定；本文锚定 <code>42657d1</code>，后续若改代码，应同步更新本文。</p>
+<div class="table-wrap"><table><thead><tr><th>你想确认的问题</th><th>先看这里</th><th>再顺着看</th></tr></thead><tbody>
+<tr><td>配置如何生效</td><td><a href="../cortexterm/main.py">main.py</a> · main</td><td><a href="../cortexterm/memory_v2/runtime.py">memory_v2/runtime.py</a> · create_memory_manager</td></tr>
+<tr><td>输入从哪里进入记录器</td><td><a href="../cortexterm/tui/agent_turn.py">tui/agent_turn.py</a> · run_agent_background</td><td><a href="../cortexterm/agent_loop.py">agent_loop.py</a> · run_agent_turn</td></tr>
+<tr><td>记录哪些内容 / 何时写盘</td><td><a href="../cortexterm/memory_v2/service.py">memory_v2/service.py</a> · TurnRecorder / RecordedMessages / capture</td><td><a href="../cortexterm/memory_v2/store.py">memory_v2/store.py</a> · enqueue</td></tr>
+<tr><td>提取任务什么时候执行</td><td>service.py · start / _work / process_one</td><td>store.py · claim</td></tr>
+<tr><td>提取提示词和 API 输入</td><td><a href="../cortexterm/memory_v2/model.py">memory_v2/model.py</a> · extract / complete</td><td>service.py · _validate_proposal</td></tr>
+<tr><td>重复与替代怎样写入</td><td>service.py · process_one / _validate_decisions</td><td>store.py · apply</td></tr>
+<tr><td>工具参数、搜索返回值</td><td><a href="../cortexterm/tools/memory_tools.py">tools/memory_tools.py</a> · validate_search / search / read</td><td>service.py · search / read</td></tr>
+<tr><td>BM25、中文拆词、摘录</td><td><a href="../cortexterm/memory_v2/retrieval.py">memory_v2/retrieval.py</a> · tokenize / bm25 / excerpt</td><td>service.py · _turn_chunks / search</td></tr>
+<tr><td>日期查询如何处理</td><td>tools/memory_tools.py · start_time / end_time；retrieval.py · parse_time_range</td><td>service.py · _browse_history；store.py · history_page</td></tr>
+<tr><td>自动注入怎么发生</td><td>tui/agent_turn.py · _refresh_system_prompt</td><td><a href="../cortexterm/memory.py">memory.py</a> · get_relevant_context → service.py · context</td></tr>
+<tr><td>主模型如何知道记忆处理结果</td><td>agent_loop.py · _refresh_runtime_memory_context</td><td>service.py · feedback → store.py · recent_outcomes</td></tr>
+<tr><td>失败、重试、进程退出</td><td>service.py · process_one / close</td><td>store.py · claim / fail / retry_failed</td></tr>
+<tr><td>怎么在终端诊断</td><td><a href="../cortexterm/memory_v2/__main__.py">memory_v2/__main__.py</a></td><td><a href="../tests/test_memory_v2.py">tests/test_memory_v2.py</a> 查看确定性行为样例</td></tr>
+</tbody></table></div>
+<h3>读完后应能回答的六个问题</h3>
+<ol><li>“你好”会不会入库？原文保存和经验保存为什么不是一回事？</li><li>一轮内部调用五次模型，会不会生成五个提取任务？</li><li>后台调用额度用完后，已有内容还能搜到吗？</li><li>查询与历史没有共享词项时，当前 BM25 会怎样？日期查询为何又可能查到？</li><li>memory_search 返回后，是谁把结果追加进模型上下文？</li><li>SQLite 解决的是哪些存储问题，哪些检索和模型质量问题仍没解决？</li></ol>
+<details><summary>对照答案</summary><ol><li>进入 Agent Turn 就留原文；提取模型可以返回空经验列表。</li><li>不是。记录器以一次 run_agent_turn 为单位，结束时产生一条待处理历史。</li><li>可以；原文、显式记忆、旧版导入和已经生成的经验仍可查询，尚未处理任务留待以后。</li><li>话题搜索零命中就返回空。空 query 的日期浏览直接按时间分页列原始 turn，不做相关性排名。</li><li>工具返回 ToolResult，Agent Loop 追加对应 tool_result，下一次主模型请求带上它。</li><li>事务、并发领取、状态和关系更新；不自动解决语义匹配、经验真假、调用费用、全量搜索增长和磁盘淘汰。</li></ol></details>
+</section>
+<footer class="foot">CortexTerm · Memory V2 设计说明 · 依据本地源码与已保存实验编写。本文中的例子、提示词要求、程序硬校验和实验结论分别标注，不把它们混为一谈。</footer>
+</main>
+</div>
+<script>
+if("IntersectionObserver" in window){
+ const observer=new IntersectionObserver(entries=>{
+  const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
+  if(visible.length){document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("active",a.hash==="#"+visible[0].target.id));}
+ },{rootMargin:"-5% 0px -65% 0px",threshold:0});
+ document.querySelectorAll("main section[id]").forEach(section=>observer.observe(section));
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+
+
+def build_runtime_time_context() -> str:
+    """Return an aware local clock snapshot for the next model request."""
+    now = datetime.now().astimezone()
+    return f"Current local time (default zone for relative dates): {now.isoformat(timespec='seconds')}"
 
 
 def _maybe_read(path: Path) -> str | None:
@@ -117,10 +124,11 @@ def build_system_prompt(
         "- Do not stop after a progress update. After a <progress> message, continue the task in the next step.",
         "- Plain assistant text without <progress> is treated as a completed assistant message for this turn.",
         "Memory policy:",
-        "- Use the remember tool automatically when you learn durable information that will help future sessions.",
-        "- Remember stable user preferences, project conventions, architecture decisions, setup/test commands, recurring bug fixes, and local environment constraints.",
-        "- Do not remember temporary task progress, one-off command output, guesses, secrets, API keys, tokens, credentials, large logs, or sensitive content.",
-        "- Use user memory for cross-project user preferences, project memory for repository conventions, and local memory for machine-specific notes.",
+        "- Memory is saved only by a background worker after a turn ends. There is no remember tool.",
+        "- The worker selects user/project/local scope, compares old experiences and saves supported durable facts.",
+        "- Use memory_search to recall past facts and memory_read with source_ids to inspect original messages.",
+        "- Background memory status reports actual committed changes, skipped duplicates, pending work or failure. Do not claim something is already saved unless a completed status or a read confirms it.",
+        "- If the user asks to remember or correct a fact, acknowledge the request in the conversation for the worker; do not bypass it by writing memory files or the database with other tools.",
     ]
 
     # Engineering governance rules (MANDATORY)

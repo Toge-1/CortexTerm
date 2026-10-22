@@ -121,9 +121,9 @@ def test_remember_tool_does_not_write_when_edit_permission_denied(tmp_path: Path
     assert not (tmp_path / ".cortexterm-memory" / "memory.json").exists()
 
 
-def test_remember_tool_is_registered() -> None:
+def test_remember_tool_is_not_registered() -> None:
     registry = create_default_tool_registry(".")
     try:
-        assert registry.find("remember") is remember_tool
+        assert registry.find("remember") is None
     finally:
         registry.dispose()

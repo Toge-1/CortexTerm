@@ -9,7 +9,7 @@ import pytest
 
 from cortexterm.agent_loop import run_agent_turn
 from cortexterm.context_manager import estimate_tokens
-from cortexterm.memory_v2.retrieval import time_window, tokenize
+from cortexterm.memory_v2.retrieval import parse_time_range, tokenize
 from cortexterm.memory_v2.service import MemoryService, TurnRecorder
 from cortexterm.memory_v2.store import make_record
 from cortexterm.tooling import ToolContext, ToolRegistry
@@ -68,7 +68,8 @@ def test_temporal_query_does_not_require_semantic_match(memory):
     future = TurnRecorder("明天的秘密", turn_id="future")
     future.recorded_at = yesterday + 86400 * 3
     memory.capture(future)
-    result = memory.search("昨天晚上叫你干什么", now=datetime(2026, 10, 20, 12, tzinfo=timezone.utc))
+    result = memory.search("", now=datetime(2026, 10, 20, 12, tzinfo=timezone.utc),
+                           start_time="2026-10-19T18:00:00Z", end_time="2026-10-20T00:00:00Z")
     assert [r["id"] for r in result["results"]] == ["night"]
 
 
@@ -140,11 +141,10 @@ def test_expired_lease_is_recoverable(memory):
     assert memory.store.claim(memory.project, memory.workspace)["id"] == "expired"
 
 
-def test_bad_llm_evidence_does_not_publish(memory):
+def test_unknown_source_id_does_not_publish(memory):
     class BadExtractor:
         def extract(self, turn, existing):
-            return {"memories": [{"statement": "invented", "evidence": [
-                {"event_id": turn["events"][0]["id"], "quote": "never appeared"}]}]}
+            return {"memories": [{"statement": "invented", "evidence_ids": ["unknown#part:0"]}]}
     memory.capture(TurnRecorder("real words"))
     memory.model = BadExtractor()
     assert memory.process_one()
@@ -167,11 +167,11 @@ def test_valid_extraction_and_idempotence(memory):
     assert memory.store.stats(memory.project, memory.workspace)["jobs"] == {"done": 1}
 
 
-def test_automatic_merge_cannot_override_explicit_memory(memory):
-    old = put(memory, "use command one")
+def test_automatic_merge_cannot_override_different_scope(memory):
+    old = put(memory, "use command one", scope="project")
     rec = TurnRecorder("use command two")
     turn = {"id": rec.id, "recorded_at": rec.recorded_at, "events": rec.events}
-    with pytest.raises(ValueError, match="explicit"):
+    with pytest.raises(ValueError, match="scope"):
         memory._validate_proposal(turn, {"memories": [{
             "statement": "use command two", "supersedes": [old["id"]],
             "evidence": [{"event_id": rec.events[0]["id"], "quote": "command two"}],
@@ -219,12 +219,13 @@ def test_remember_approval_and_immediate_visibility(memory):
     assert memory.search("widget")["results"]
 
 
-def test_time_and_multilingual_tokenizer():
+def test_explicit_time_range_and_multilingual_tokenizer():
     assert "审批" in tokenize("审批失败")
     assert "session" in tokenize("session_lock.py")
-    window = time_window("yesterday evening", datetime(2026, 10, 20, tzinfo=timezone.utc))
+    window = parse_time_range("2026-10-19T18:00:00Z", "2026-10-20T00:00:00Z")
     assert window[1] - window[0] == 6 * 3600
-    assert time_window("2026-99-99", datetime.now().astimezone()) is None
+    with pytest.raises(ValueError):
+        parse_time_range("2026-99-99T18:00:00Z", "2026-10-20T00:00:00Z")
 
 
 def test_expired_worker_cannot_publish_or_fail_new_owner(memory):
@@ -320,7 +321,7 @@ def test_memory_slash_command_reports_running_service(memory):
     from cortexterm.cli_commands import try_handle_local_command
     memory.capture(TurnRecorder("a pending turn"))
     text = try_handle_local_command("/memory", memory_mgr=SimpleNamespace(v2=memory))
-    assert "Memory V2 / hybrid" in text
+    assert "Memory: conversation history + reusable experiences" in text
     assert "'pending': 1" in text
     assert "Automatic extraction: off" in text
 

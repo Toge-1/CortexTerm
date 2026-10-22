@@ -6,12 +6,15 @@ from cortexterm.context_manager import CompactionBoundaryError, ContextManager, 
 from cortexterm.conversation_history import get_archived_messages
 from cortexterm.logging_config import get_logger
 from cortexterm.permissions import PermissionManager
+from cortexterm.prompt import build_runtime_time_context
 from cortexterm.tooling import ToolContext, ToolRegistry
 from cortexterm.types import AgentStep, ChatMessage, ModelAdapter
 
 logger = get_logger("agent_loop")
 
 MAX_COMPACTION_ATTEMPTS = 3
+_RUNTIME_TIME_CONTEXT = "isRuntimeTimeContext"
+_RUNTIME_MEMORY_CONTEXT = "isRuntimeMemoryContext"
 
 # 常量：避免重复的提示文本
 NUDGE_CONTINUE = (
@@ -82,23 +85,57 @@ def _should_treat_assistant_as_progress(*, kind: str | None, content: str, saw_t
     return False
 
 
-def run_agent_turn(*, memory_service=None, memory_session: str = "", **kwargs) -> list[ChatMessage]:
-    """Run a turn; the optional recorder survives compaction and exception paths."""
-    if memory_service is None:
-        return _run_agent_turn_impl(**kwargs)
-    from cortexterm.memory_v2.service import TurnRecorder
-    request = next((m.get("content", "") for m in reversed(kwargs["messages"])
-                    if m.get("role") == "user" and not m.get("isCompactionSummary")), "")
-    recorder = TurnRecorder(str(request), memory_session)
+def _without_runtime_time_context(messages: list[ChatMessage]) -> list[ChatMessage]:
+    return [message for message in messages
+            if not message.get(_RUNTIME_TIME_CONTEXT) and not message.get(_RUNTIME_MEMORY_CONTEXT)]
+
+
+def _refresh_runtime_memory_context(messages: list[ChatMessage], service, recorder) -> None:
+    messages[:] = [m for m in messages if not m.get(_RUNTIME_MEMORY_CONTEXT)]
+    feedback = getattr(service, "feedback", None)
+    if feedback is None:
+        return
     try:
-        return _run_agent_turn_impl(
+        content = feedback(recorder.session if recorder else "")
+    except Exception as error:
+        logger.warning("Unable to read memory status (%s)", type(error).__name__)
+        return
+    if content:
+        messages.insert(0, {"role": "system", "content": content, _RUNTIME_MEMORY_CONTEXT: True})
+
+
+def _refresh_runtime_time_context(messages: list[ChatMessage]) -> None:
+    context = {"role": "system", "content": build_runtime_time_context(),
+               _RUNTIME_TIME_CONTEXT: True}
+    for index, message in enumerate(messages):
+        if message.get(_RUNTIME_TIME_CONTEXT):
+            messages[index] = context
+            return
+    messages.insert(0, context)
+
+
+def run_agent_turn(*, memory_service=None, memory_session: str = "", **kwargs) -> list[ChatMessage]:
+    """Run a turn; runtime clock context never becomes saved conversation evidence."""
+    recorder = None
+    if memory_service is not None:
+        from cortexterm.memory_v2.service import TurnRecorder
+        request = next((m.get("content", "") for m in reversed(kwargs["messages"])
+                        if m.get("role") == "user" and not m.get("isCompactionSummary")), "")
+        recorder = TurnRecorder(str(request), memory_session)
+    try:
+        result = _run_agent_turn_impl(
             **kwargs, memory_service=memory_service, memory_recorder=recorder,
         )
+        return _without_runtime_time_context(result)
     finally:
-        try:
-            memory_service.capture(recorder)
-        except Exception as error:
-            logger.warning("Unable to persist memory evidence (%s)", type(error).__name__)
+        context_manager = kwargs.get("context_manager")
+        if context_manager is not None:
+            context_manager.messages = _without_runtime_time_context(context_manager.messages)
+        if recorder is not None:
+            try:
+                memory_service.capture(recorder)
+            except Exception as error:
+                logger.warning("Unable to persist memory evidence (%s)", type(error).__name__)
 
 
 def _run_agent_turn_impl(
@@ -210,6 +247,11 @@ def _run_agent_turn_impl(
         return None
 
     while max_steps is None or step < max_steps:
+        # Observe committed background work without blocking for extraction.
+        # Refresh before compaction so this bounded status is included in the budget.
+        _refresh_runtime_memory_context(current_messages, memory_service, memory_recorder)
+        # Replace one transient system message, counted in the request budget.
+        _refresh_runtime_time_context(current_messages)
         # This also runs after tool results are appended, before the next model call.
         pause_reason = _compact_if_needed()
         if pause_reason is not None:
@@ -227,6 +269,9 @@ def _run_agent_turn_impl(
         step += 1
         next_step: AgentStep
         try:
+            # Compaction may have taken time. The timestamp has fixed length, so
+            # refreshing it here does not change the already-checked budget.
+            _refresh_runtime_time_context(current_messages)
             next_step = model.next(current_messages)
         except KeyboardInterrupt:
             raise  # Let Ctrl-C propagate

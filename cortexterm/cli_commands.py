@@ -162,19 +162,19 @@ def try_handle_local_command(user_input: str, tools=None, memory_mgr=None) -> st
                 stats = service.store.stats(service.project, service.workspace)
                 calls = getattr(service.model, "calls", [])
                 return "\n".join([
-                    f"Memory V2 / {service.mode}",
+                    "Memory: conversation history + reusable experiences",
                     f"Active records: {stats['active']} / {stats['records']}",
                     f"Extraction queue: {stats['jobs']}",
                     f"Automatic extraction: {'on' if service.model else 'off'}",
-                    f"Automatic context injection: {'on' if service.auto_recall else 'off (use memory tools)'}",
+                    "Recall: on demand through memory_search / memory_read",
                     f"Extraction calls this process: {len(calls)}",
-                    f"Graph expansion: {'on' if service.graph else 'off'}",
+                    "Topic retrieval: single BM25 ranking; time-only queries: paginated history",
                     f"Context budget: {service.max_tokens} estimated tokens",
                     f"Database: {service.store.path}",
                     "Use memory_search / memory_read to inspect scoped evidence.",
                 ])
-            if getattr(memory_mgr, "memory_mode", "") == "off":
-                return "Memory injection and V2 capture are disabled for this launch."
+            if getattr(memory_mgr, "memory_error", None):
+                return f"Memory unavailable: {memory_mgr.memory_error}. Check the database path and logs."
             from cortexterm.memory import MemoryManager
             from pathlib import Path
             memory_mgr = memory_mgr or MemoryManager(project_root=Path(cwd))

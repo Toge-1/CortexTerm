@@ -20,6 +20,9 @@ class ChatMessage(TypedDict, total=False):
     isError: bool
     thinkingBlocks: list[dict[str, Any]]
     isCompactionSummary: bool
+    # Transient runtime metadata, removed before returning/saving a conversation.
+    isRuntimeTimeContext: bool
+    isRuntimeMemoryContext: bool
     compactedMessages: list[dict[str, Any]]
 
 

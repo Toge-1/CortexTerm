@@ -48,6 +48,12 @@ class MemoryStore:
                     id TEXT NOT NULL, model TEXT NOT NULL, vector TEXT NOT NULL,
                     PRIMARY KEY(id, model)
                 );
+                CREATE TABLE IF NOT EXISTS turn_candidates (
+                    turn_id TEXT PRIMARY KEY, proposal TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS memory_outcomes (
+                    turn_id TEXT PRIMARY KEY, outcomes TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS memory_project ON memories(project, status);
                 CREATE INDEX IF NOT EXISTS turns_project ON turns(project, recorded_at);
             """)
@@ -107,6 +113,26 @@ class MemoryStore:
                 (error[:300], turn_id, attempt, attempt),
             )
 
+    def candidates(self, turn_id: str) -> dict | None:
+        with self.connect() as db:
+            row = db.execute("SELECT proposal FROM turn_candidates WHERE turn_id=?", (turn_id,)).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def save_candidates(self, turn_id: str, proposal: dict, attempt: int) -> None:
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            owner = db.execute("SELECT state,attempts FROM turns WHERE id=?", (turn_id,)).fetchone()
+            if owner is None or owner["state"] != "running" or owner["attempts"] != attempt:
+                raise ValueError("Extraction lease was reclaimed by another worker")
+            db.execute("INSERT OR REPLACE INTO turn_candidates VALUES(?,?)",
+                       (turn_id, json.dumps(proposal, ensure_ascii=False)))
+
+    def defer(self, turn_id: str, attempt: int) -> None:
+        """A depleted API budget is not a failed attempt; retain the extraction checkpoint."""
+        with self.connect() as db:
+            db.execute("UPDATE turns SET state='pending',lease_until=0,attempts=attempts-1 "
+                       "WHERE id=? AND state='running' AND attempts=?", (turn_id, attempt))
+
     def retry_failed(self, project: str, workspace: str) -> int:
         with self.connect() as db:
             return db.execute(
@@ -142,14 +168,54 @@ class MemoryStore:
             )
             return [{**dict(r), "events": json.loads(r["events"])} for r in rows]
 
+    def history_page(self, project: str, workspace: str, *, start: float, end: float,
+                     as_of: float, after: tuple[float, str] | None, limit: int) -> list[dict]:
+        """Keyset pagination over turn headers; do not load every tool log to list history."""
+        query = ("SELECT id,session,recorded_at,request FROM turns WHERE project=? AND workspace=? "
+                 "AND recorded_at>=? AND recorded_at<? AND recorded_at<=?")
+        values: list = [project, workspace, start, end, as_of]
+        if after is not None:
+            query += " AND (recorded_at>? OR (recorded_at=? AND id>?))"
+            values.extend([after[0], after[0], after[1]])
+        query += " ORDER BY recorded_at,id LIMIT ?"
+        values.append(limit)
+        with self.connect() as db:
+            return [dict(row) for row in db.execute(query, values)]
+
+    def recent_outcomes(self, project: str, workspace: str, session: str) -> list[dict]:
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT t.id,t.state,t.error,o.outcomes FROM turns t "
+                "LEFT JOIN memory_outcomes o ON o.turn_id=t.id "
+                "WHERE t.project=? AND t.workspace=? AND t.session=? "
+                "ORDER BY t.recorded_at DESC,t.id DESC LIMIT 3", (project, workspace, session),
+            )
+            return [{**dict(r), "outcomes": json.loads(r["outcomes"]) if r["outcomes"] else []} for r in rows]
+
+    def source_event(self, identity: str) -> dict | None:
+        """Caller must authorize this exact event through a visible memory's source_ids."""
+        turn_id = identity.rsplit(":", 1)[0]
+        with self.connect() as db:
+            row = db.execute("SELECT id,session,events FROM turns WHERE id=?", (turn_id,)).fetchone()
+            if row:
+                event = next((e for e in json.loads(row["events"]) if e["id"] == identity), None)
+                if event:
+                    return {**event, "turn_id": row["id"], "session": row["session"]}
+        return None
+
     def apply(self, records: list[dict], replacements: list[dict] | None = None,
-              *, completed_turn: str | None = None, claim_attempt: int | None = None) -> None:
+              *, completed_turn: str | None = None, claim_attempt: int | None = None,
+              checked_references: list[dict] | None = None, outcomes: list[dict] | None = None) -> None:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if completed_turn and claim_attempt is not None:
                 owner = db.execute("SELECT state,attempts FROM turns WHERE id=?", (completed_turn,)).fetchone()
                 if owner is None or owner["state"] != "running" or owner["attempts"] != claim_attempt:
                     raise ValueError("Extraction lease was reclaimed by another worker")
+            for reference in checked_references or []:
+                row = db.execute("SELECT status,version FROM memories WHERE id=?", (reference["id"],)).fetchone()
+                if row is None or row["status"] != "active" or row["version"] != reference["version"]:
+                    raise ValueError("Memory used for deduplication changed during consolidation")
             for change in replacements or []:
                 old = db.execute("SELECT * FROM memories WHERE id=?", (change["old_id"],)).fetchone()
                 new = next((r for r in records if r["id"] == change["new_id"]), None)
@@ -187,6 +253,9 @@ class MemoryStore:
                             db.execute("INSERT OR IGNORE INTO links VALUES(?,?,?)", (record["id"], peer["id"], "related"))
             if completed_turn:
                 db.execute("UPDATE turns SET state='done',error='',lease_until=0 WHERE id=?", (completed_turn,))
+                db.execute("DELETE FROM turn_candidates WHERE turn_id=?", (completed_turn,))
+                db.execute("INSERT OR REPLACE INTO memory_outcomes VALUES(?,?)",
+                           (completed_turn, json.dumps(outcomes or [], ensure_ascii=False)))
 
     def related(self, ids: list[str]) -> list[str]:
         if not ids:

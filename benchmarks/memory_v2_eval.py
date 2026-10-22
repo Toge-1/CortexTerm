@@ -115,7 +115,7 @@ def check(root, code, check_dir):
 
 
 def run(output: Path, repeats: int, max_cases: int, modes: list[str]):
-    if repeats < 1 or not 1 <= max_cases <= len(CASES) or set(modes) - {"none", "full", "raw", "hybrid", "graph"}:
+    if repeats < 1 or not 1 <= max_cases <= len(CASES) or set(modes) - {"none", "full", "raw", "hybrid"}:
         raise ValueError("Invalid repeat/case/mode selection")
     output.mkdir(parents=True, exist_ok=True)
     if (output / "manifest.json").exists():
@@ -160,7 +160,6 @@ def run(output: Path, repeats: int, max_cases: int, modes: list[str]):
                 for mode in order:
                     for name, content in case["files"].items():
                         (root / name).write_text(content, encoding="utf-8")
-                    memory.graph = mode == "graph"
                     context = "" if mode == "none" else memory.context(
                         case["task"], mode="raw" if mode == "raw" else "hybrid",
                     )
@@ -224,6 +223,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--cases", type=int, default=len(CASES))
-    parser.add_argument("--modes", nargs="+", default=["none", "full", "raw", "hybrid", "graph"])
+    parser.add_argument("--modes", nargs="+", choices=["none", "full", "raw", "hybrid"],
+                        default=["none", "full", "raw", "hybrid"])
     args = parser.parse_args()
     run(args.output, args.repeats, args.cases, args.modes)

@@ -1,24 +1,31 @@
-"""Inspectable lexical, temporal, optional semantic, and relation retrieval."""
+"""One lexical ranking, bounded excerpts, and explicit recording-time filters."""
 
 from __future__ import annotations
 
 import math
 import re
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def tokenize(text: str) -> list[str]:
+    return [term for term, _, _ in token_spans(text)]
+
+
+def token_spans(text: str) -> list[tuple[str, int, int]]:
     # Preserve exact symbols AND identifier components; CJK bigrams do not require
     # a language package, unlike whitespace-only tokenization.
-    words = re.findall(r"[a-zA-Z0-9_./:-]+|[\u3400-\u9fff]+", text.lower())
     tokens = []
-    for word in words:
+    for match in re.finditer(r"[a-zA-Z0-9_./:-]+|[\u3400-\u9fff]+", text.lower()):
+        word, start = match.group(), match.start()
         if re.fullmatch(r"[\u3400-\u9fff]+", word):
-            tokens.extend(word[i:i + 2] for i in range(max(1, len(word) - 1)))
+            tokens.extend((word[i:i + 2], start + i, start + min(i + 2, len(word)))
+                          for i in range(max(1, len(word) - 1)))
         else:
-            tokens.append(word)
-            tokens.extend(p for p in re.split(r"[_./:-]+", word) if len(p) > 1 and p != word)
+            tokens.append((word, start, match.end()))
+            tokens.extend((part.group(), start + part.start(), start + part.end())
+                          for part in re.finditer(r"[^_./:-]+", word)
+                          if len(part.group()) > 1 and part.group() != word)
     return tokens
 
 
@@ -43,40 +50,35 @@ def bm25(query: str, documents: list[str]) -> list[tuple[int, float]]:
     return sorted(scores, key=lambda v: (-v[1], v[0]))
 
 
-def rrf(rankings: list[list[str]]) -> list[tuple[str, float]]:
-    scores: dict[str, float] = {}
-    for ranking in rankings:
-        for rank, identity in enumerate(dict.fromkeys(ranking), 1):
-            scores[identity] = scores.get(identity, 0) + 1 / (60 + rank)
-    return sorted(scores.items(), key=lambda v: (-v[1], v[0]))
+def search_text(record: dict) -> str:
+    """Each record contributes exactly one document to BM25."""
+    return record["statement"] + " " + " ".join(record["keywords"] + record["entities"])
 
 
-def time_window(query: str, now: datetime) -> tuple[float, float] | None:
-    """Resolve common explicit dates/day ranges. Ambiguous phrases stay unresolved."""
-    match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", query)
-    start = None
-    if match:
-        try:
-            start = datetime.fromisoformat(match.group()).replace(tzinfo=now.tzinfo)
-        except ValueError:
-            return None
-    else:
-        offset = next((days for pattern, days in (
-            (r"前天|day before yesterday", 2), (r"昨天|昨晚|yesterday|last night", 1),
-            (r"今天|today", 0),
-        ) if re.search(pattern, query, re.I)), None)
-        if offset is not None:
-            start = (now - timedelta(days=offset)).replace(hour=0, minute=0, second=0, microsecond=0)
-    if start is None:
+def excerpt(text: str, query: str, limit: int = 1200) -> str:
+    if len(text) <= limit:
+        return text
+    terms = set(tokenize(query))
+    hit = next((start for term, start, _ in token_spans(text) if term in terms), 0)
+    start = min(max(0, hit - limit // 3), len(text) - limit)
+    return ("…" if start else "") + text[start:start + limit] + ("…" if start + limit < len(text) else "")
+
+
+def parse_time_range(start_time: str | None, end_time: str | None) -> tuple[float, float] | None:
+    """Validate an explicit half-open recording-time range; never infer query semantics."""
+    if start_time is None and end_time is None:
         return None
-    end = start + timedelta(days=1)
-    if re.search(r"晚上|昨晚|evening|night", query, re.I):
-        start = start.replace(hour=18)
-    return start.timestamp(), end.timestamp()
-
-
-def cosine(left: list[float], right: list[float]) -> float:
-    if len(left) != len(right) or not left:
-        return 0
-    denom = math.sqrt(sum(x*x for x in left) * sum(x*x for x in right))
-    return sum(x*y for x, y in zip(left, right)) / denom if denom else 0
+    bounds = []
+    for name, value in (("start_time", start_time), ("end_time", end_time)):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("start_time and end_time must both be provided as ISO 8601 timestamps with timezone")
+        try:
+            instant = datetime.fromisoformat(value.strip())
+        except ValueError as error:
+            raise ValueError(f"{name} must be a valid ISO 8601 timestamp with timezone") from error
+        if instant.utcoffset() is None:
+            raise ValueError(f"{name} must include a timezone offset, such as +08:00 or Z")
+        bounds.append(instant.timestamp())
+    if bounds[0] >= bounds[1]:
+        raise ValueError("start_time must be earlier than end_time")
+    return bounds[0], bounds[1]

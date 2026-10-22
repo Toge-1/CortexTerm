@@ -23,7 +23,6 @@ from cortexterm.tools.multi_edit import multi_edit_tool
 from cortexterm.tools.notebook_edit import notebook_edit_tool
 from cortexterm.tools.patch_file import patch_file_tool
 from cortexterm.tools.read_file import read_file_tool
-from cortexterm.tools.remember import remember_tool
 from cortexterm.tools.memory_tools import memory_search_tool, memory_read_tool
 from cortexterm.tools.run_command import run_command_tool
 from cortexterm.tools.run_with_debug import run_with_debug_tool
@@ -41,7 +40,6 @@ def create_default_tool_registry(cwd: str, runtime: dict | None = None) -> ToolR
         [
             # User interaction
             ask_user_tool,
-            remember_tool,
             memory_search_tool,
             memory_read_tool,
             history_search_tool,

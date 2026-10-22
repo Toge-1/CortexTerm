@@ -169,14 +169,6 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Set logging level (default: WARNING)",
     )
-    parser.add_argument(
-        "--memory", choices=["legacy", "off", "raw", "hybrid"], default=None,
-        help="Memory strategy for this launch (raw searches saved evidence; hybrid also searches extracted facts)",
-    )
-    parser.add_argument(
-        "--memory-extract", action="store_true",
-        help="Enable bounded background model calls to extract memories; use with --memory hybrid",
-    )
     args = parser.parse_args()
 
     # Initialize logging
@@ -251,16 +243,7 @@ def main() -> None:
     
     # Initialize MemoryManager for cross-session knowledge retention
     from cortexterm.memory_v2.runtime import create_memory_manager
-    memory_runtime = dict(runtime or {})
-    if args.memory is not None or args.memory_extract:
-        memory_settings = dict(memory_runtime.get("memory", {}))
-        if args.memory is not None:
-            memory_settings["mode"] = args.memory
-        if args.memory_extract:
-            memory_settings.setdefault("mode", "hybrid")
-            memory_settings["autoExtract"] = True
-        memory_runtime["memory"] = memory_settings
-    memory_mgr = create_memory_manager(cwd, memory_runtime)
+    memory_mgr = create_memory_manager(cwd, runtime)
     logger.info("Memory manager initialized")
     
     messages = [
